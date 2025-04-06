@@ -29,12 +29,10 @@ const Login = () => {
         );
 
         window.addEventListener("message", (event) => {
-            if (event.origin === "http://localhost:3000") {
-              if (event.data) {
-                sessionStorage.setItem("user", JSON.stringify(event.data));
+            if (event.origin === "http://localhost:3000" && event.data.user) {
+                sessionStorage.setItem("user", JSON.stringify(event.data.user));
                 popup.close();
-                window.location.href = "/dashboard"
-              }
+                window.location.href = "/dashboard"    
             }
           });
         };
