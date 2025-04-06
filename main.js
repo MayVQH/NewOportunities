@@ -1,5 +1,5 @@
 import express from "express";
-import { loginRouter } from "./routes/microsoft.js";
+import { loginRouter } from "./routes/microsoftRoutes.js";
 import passport from "passport";
 import "./middlewares/microsoft.js"
 import path from "path";
