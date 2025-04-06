@@ -1,0 +1,23 @@
+.dashboard-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    height: 100vh;
+    background-color: #f4f4f4;
+  }
+  
+  .dashboard-container h1 {
+    font-size: 2rem;
+    margin-bottom: 20px;
+  }
+  
+  .dashboard-container h2 {
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+  }
+  
+  .dashboard-container p {
+    font-size: 1rem;
+    color: #555;
+  }
