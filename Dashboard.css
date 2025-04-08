@@ -1,11 +1,4 @@
-.dashboard-container {
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-    background-color: #f8f9fa;
-  }
-  
-  .dashboard-nav {
+.dashboard-nav {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -15,28 +8,81 @@
     position: sticky;
     top: 0;
     z-index: 100;
-  }
-  
-  .nav-user-profile {
+}
+
+.nav-menu {
+    display: flex;
+    align-items: center;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    
+}
+
+.nav-menu span {
+    margin: 0 1.5rem;
+    padding: 0.5rem 0;
+    color: #2d3748;
+    font-weight: 500;
+    cursor: pointer;
+    position: relative;
+    transition: color 0.2s;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+    letter-spacing: 0.5px;
+    font-family: Arial, sans-serif;
+}
+
+.nav-menu span:hover {
+    color: #0078d4;
+}
+
+.nav-menu span::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background-color: #0078d4;
+    transition: width 0.3s;
+}
+
+.nav-menu span:hover::after {
+    width: 100%;
+}
+
+.logout-btn {
+    margin-left: auto;
+}
+
+.dashboard-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background-color: #f8f9fa;
+}
+
+.nav-user-profile {
     display: flex;
     align-items: center;
     gap: 1rem;
-  }
-  
-  .user-avatar {
+}
+
+.user-avatar {
     width: 40px;
     height: 40px;
     border-radius: 50%;
     object-fit: cover;
     border: 2px solid #e1e5e9;
-  }
-  
-  .user-name {
+}
+
+.user-name {
     font-weight: 600;
     color: #2d3748;
-  }
-  
-  .logout-btn {
+}
+
+.logout-btn {
     background-color: transparent;
     color: #e53e3e;
     border: 1px solid #e53e3e;
@@ -45,49 +91,154 @@
     cursor: pointer;
     transition: all 0.2s;
     font-weight: 500;
-  }
-  
-  .logout-btn:hover {
+}
+
+.logout-btn:hover {
     background-color: #e53e3e;
     color: white;
-  }
-  
-  .dashboard-main {
+}
+
+.dashboard-main {
     flex: 1;
     padding: 2rem;
-    max-width: 1200px;
-    width: 100%;
-    margin: 0 auto;
+    display: flex;
   }
   
-  .loading-container {
+  .dashboard-content {
+    display: flex;
+    width: 100%;
+    gap: 2rem;
+  }
+  
+  .calendar-container {
+    width: 300px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 1rem;
+    height: fit-content;
+  } 
+
+  .calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+  
+  .calendar-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: #2d3748;
+  }
+  
+  .calendar-nav {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    color: #0078d4;
+    padding: 0.5
+}
+
+.calendar-weekdays {
+    display: flex;
+    margin-bottom: 0.5rem;
+  }
+  
+  .weekday {
+    flex: 1;
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: #718096;
+  }
+  
+  .calendar-week {
+    display: flex;
+  }
+
+  .calendar-day {
+    flex: 1;
+    text-align: center;
+    padding: 0.5rem;
+    margin: 0.1rem;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .calendar-day:hover {
+    background-color: #ebf8ff;
+  }
+  
+  .calendar-day.today {
+    background-color: #0078d4;
+    color: white;
+  }
+
+  .calendar-day.selected {
+    background-color: #90cdf4;
+    color: white;
+    font-weight: bold;
+  }
+  
+  .calendar-day.inactive {
+    color: #cbd5e0;
+    cursor: default;
+  }
+
+  .main-content {
+    flex: 1;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 2rem;
+  }
+
+.loading-container {
     display: flex;
     justify-content: center;
     align-items: center;
     height: 100vh;
-  }
-  
-  .loading-spinner {
+}
+
+.loading-spinner {
     border: 4px solid rgba(0, 0, 0, 0.1);
     border-radius: 50%;
     border-top: 4px solid #0078d4;
     width: 40px;
     height: 40px;
     animation: spin 1s linear infinite;
-  }
-  
-  @keyframes spin {
+}
+
+@keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
-  }
-  
-  /* Responsive adjustments */
-  @media (max-width: 768px) {
+}
+
+@media (max-width: 768px) {
     .dashboard-nav {
-      padding: 1rem;
+        padding: 1rem;
+        flex-wrap: wrap;
+    }
+    
+    .nav-menu {
+        order: 3;
+        position: relative;
+        left: auto;
+        transform: none;
+        width: 100%;
+        justify-content: center;
+        margin-top: 1rem;
+    }
+    
+    .nav-menu span {
+        margin: 0 0.8rem;
+        font-size: 0.8rem;
     }
     
     .user-name {
-      display: none;
+        display: none;
     }
-  }
+}
