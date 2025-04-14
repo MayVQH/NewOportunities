@@ -51,4 +51,14 @@ loginRouter.get("/microsoft/callback",passport.authenticate("auth-microsoft", {
     }
 });
 
+loginRouter.get('/logout', (res,req) => {
+    req.logout(() => {
+        res.redirect('https://login.microsoftonline.com/common/oauth2/v2.0/logout?' + 
+            new URLSearchParams({
+              post_logout_redirect_uri: process.env.FRONTEND_ORIGIN || 'http://localhost:5000',
+              client_id: process.env.MICROSOFT_CLIENT_ID
+            })
+        );
+    });
+});
 export{loginRouter}

@@ -10,10 +10,16 @@ passport.use("auth-microsoft", new MicrosoftStrategy({
     clientID: process.env.MICROSOFT_CLIENT_ID,
     clientSecret:process.env.MICROSOFT_CLIENT_SECRET,
     callbackURL: process.env.MICROSOFT_REDIRECT_URI,
-    scope: ["user.read","calendars.read","mail.read","offline_access"],
+    scope: ["user.read","calendars.read","mail.read","offline_access","openid"],
+    prompt: 'select_account',
+    tenant: 'common',
+    cookieEncryptionKey: [
+        {key:process.env.COOKIE_KEY, iv:process.env.COOKIE_IV}
+    ],
+    passReqToCallback:true,
     authorizationURL:"https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
     tokenURL:'https://login.microsoftonline.com/common/oauth2/v2.0/token'
-}, async function (accessToken,refreshToken,profile,done) {
+}, async function (req,accessToken,refreshToken,profile,done) {
     try {
         const photoResponse = await axios.get('https://graph.microsoft.com/v1.0/me/photo/$value',
             {
@@ -28,6 +34,10 @@ passport.use("auth-microsoft", new MicrosoftStrategy({
         const photoUrl = `data:${photoResponse.headers['content-type']};base64,${photoBase64}`;
 
         profile.photos = [{value:photoUrl}];
+        req.session.microsoftTokens ={
+            accessToken,
+            refreshToken
+        };
         console.log(profile)
         done(null,profile)
 
