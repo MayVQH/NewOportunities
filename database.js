@@ -2,13 +2,13 @@ import sql from 'mssql';
 
 
 const dbSettings = {
-    user: process.env.USER_DBB,
+    user: process.env.USER_DB,
     password: process.env.PASSWORD_DB,
     server: process.env.SERVER_DB,
     database: process.env.DATABASE_NAME,
     options: {
-        encrypt: true, // For Azure
-        trustServerCertificate: true // For self-signed certs
+        encrypt: true, 
+        trustServerCertificate: true 
       }
 };
 

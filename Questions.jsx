@@ -54,9 +54,11 @@ return (
                 <span className="preguntaClave" onClick={() => navigate("/preguntas-clave")}>Preguntas Clave</span>
                 <span className="temas" onClick={() => navigate("/temas")}>Temas</span>
                 <span className="enrolamiento" onClick={() => navigate("/enrolamiento")}>Enrolamiento</span>
+                <span className="dashboard" onClick={() => navigate("/dashboard")}>Dashboard</span>
             </div>
             <button onClick={handleLogout} className="logout-btn">Sign out</button>
         </nav>
+
     </div> 
 )
 }

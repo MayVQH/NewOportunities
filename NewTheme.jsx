@@ -43,13 +43,11 @@ const NewTheme = () => {
               }
 
             setShowSuccess(true);
-            setTimeout(() => navigate('/temas',{state:{refresh:true}}),2000)
+            setTimeout(() => window.location.href = '/temas', 2000);
         } catch (error){
             console.error('Submission error:', error);
             alert(`Error: ${error.message}`);
-        } finally {
-            setShowConfirmation(false);
-        }
+        } 
    
     };
 
