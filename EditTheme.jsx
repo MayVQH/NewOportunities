@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import "../Styles/EditTheme.css";
+import { Container, Row, Col, Card, Form, Button, ListGroup, Spinner, Alert, Modal } from "react-bootstrap";
+import 'bootstrap/dist/css/bootstrap.min.css';
 
 const EditTheme = () => {
     const navigate = useNavigate();
@@ -47,12 +48,13 @@ const EditTheme = () => {
 
         setTheme(prev => ({
             ...prev,
-            activeQuestions : [
+            activeQuestions: [
                 ...prev.activeQuestions,
-                {id:`temp-${Date.now()}`, text: newQuestion.trim()}
+                {id: `temp-${Date.now()}`, text: newQuestion.trim()}
             ]
         }));
         setNewQuestion('');
+        setError('');
     };
 
     const handleDeactivateQuestion = (questionId) => {
@@ -101,9 +103,7 @@ const EditTheme = () => {
                 throw new Error(errorData.message || 'Error updating theme');
             }
     
-            // Show success and redirect
             setShowSuccess(true);
-            setTimeout(() => navigate('/temas'), 2000);
         } catch (error) {
             console.error('Error:', error);
             setError(error.message);
@@ -112,94 +112,147 @@ const EditTheme = () => {
 
     if (loading) {
         return (
-            <div className="loading-container">
-                <div className="loading-spinner"></div>
-            </div>
+            <Container className="d-flex justify-content-center align-items-center vh-100">
+                <Spinner animation="border" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                </Spinner>
+            </Container>
         );
     }
 
     return (
-        
-        <div className="edit-theme-container">
-            {error && <div className="error-message">{error}</div>}
-            <div className="theme-header">
-                <h2>{theme.name}</h2>
-                <button onClick={() => navigate('/temas')}>Volver</button>
-            </div>
-    
-            {/* Active Questions */}
-            <div className="questions-section">
-                <h3>Preguntas Activas</h3>
-                {theme.activeQuestions.length === 0 ? (
-                    <p>No hay preguntas activas</p>
-                ) : (
-                    <ul>
-                        {theme.activeQuestions.map((question) => (
-                            <li key={question.id}>
-                                <span>{question.text}</span>
-                                <div className="question-actions">
-                                    <button onClick={() => handleDeactivateQuestion(question.id)}>
-                                        Desactivar
-                                    </button>
-                                    <button onClick={() => handleRemoveQuestion(question.id)}>
-                                        ×
-                                    </button>
-                                </div>
-                            </li>
-                        ))}
-                    </ul>
-                )}
-            </div>
-    
-            {/* Inactive Questions */}
-            <div className="questions-section">
-                <h3>Preguntas Inactivas</h3>
-                {theme.inactiveQuestions.length === 0 ? (
-                    <p>No hay preguntas inactivas</p>
-                ) : (
-                    <ul>
-                        {theme.inactiveQuestions.map((question) => (
-                            <li key={question.id}>
-                                <span>{question.text}</span>
-                                <button onClick={() => handleReactivateQuestion(question.id)}>
-                                    Activar
-                                </button>
-                            </li>
-                        ))}
-                    </ul>
-                )}
-            </div>
-    
-            {/* Add New Question */}
-            <div className="add-question">
-                <input
-                    type="text"
-                    value={newQuestion}
-                    onChange={(e) => setNewQuestion(e.target.value)}
-                    placeholder="Nueva pregunta"
-                    onKeyPress={(e) => e.key === 'Enter' && handleAddQuestion()}
-                />
-                <button onClick={handleAddQuestion}>Agregar</button>
-            </div>
-    
-            {/* Submit Button */}
-            <button 
-                onClick={handleSubmit}
-                disabled={theme.activeQuestions.length === 0}
-            >
-                Guardar Cambios
-            </button>
-    
-            {/* Success Modal */}
-            {showSuccess && (
-                <div className="modal-overlay">
-                    <div className="success-modal">
-                        <div>✓</div>
-                        <h3>Tema actualizado correctamente</h3>
-                    </div>
-                </div>
+        <Container className="py-4">
+            {error && (
+                <Alert variant="danger" onClose={() => setError('')} dismissible>
+                    {error}
+                </Alert>
             )}
-        </div>
+
+            <Row className="mb-4">
+                <Col>
+                    <div className="d-flex justify-content-between align-items-center">
+                        <h2>{theme.name}</h2>
+                        <Button variant="outline-secondary" onClick={() => navigate('/temas')}>
+                            Volver
+                        </Button>
+                    </div>
+                </Col>
+            </Row>
+
+            <Row>
+                {/* Active Questions */}
+                <Col md={6} className="mb-4">
+                    <Card>
+                        <Card.Header as="h5">Preguntas Activas</Card.Header>
+                        <Card.Body>
+                            {theme.activeQuestions.length === 0 ? (
+                                <p className="text-muted">No hay preguntas activas</p>
+                            ) : (
+                                <ListGroup variant="flush">
+                                    {theme.activeQuestions.map((question) => (
+                                        <ListGroup.Item key={question.id} className="d-flex justify-content-between align-items-center">
+                                            <span>{question.text}</span>
+                                            <div>
+                                                <Button 
+                                                    variant="outline-warning" 
+                                                    size="sm" 
+                                                    className="me-2"
+                                                    onClick={() => handleDeactivateQuestion(question.id)}
+                                                >
+                                                    Desactivar
+                                                </Button>
+                                                <Button 
+                                                    variant="outline-danger" 
+                                                    size="sm"
+                                                    onClick={() => handleRemoveQuestion(question.id)}
+                                                >
+                                                    <i className="bi bi-x-lg"></i>
+                                                </Button>
+                                            </div>
+                                        </ListGroup.Item>
+                                    ))}
+                                </ListGroup>
+                            )}
+                        </Card.Body>
+                    </Card>
+                </Col>
+
+                {/* Inactive Questions */}
+                <Col md={6} className="mb-4">
+                    <Card>
+                        <Card.Header as="h5">Preguntas Inactivas</Card.Header>
+                        <Card.Body>
+                            {theme.inactiveQuestions.length === 0 ? (
+                                <p className="text-muted">No hay preguntas inactivas</p>
+                            ) : (
+                                <ListGroup variant="flush">
+                                    {theme.inactiveQuestions.map((question) => (
+                                        <ListGroup.Item key={question.id} className="d-flex justify-content-between align-items-center">
+                                            <span>{question.text}</span>
+                                            <Button 
+                                                variant="outline-success" 
+                                                size="sm"
+                                                onClick={() => handleReactivateQuestion(question.id)}
+                                            >
+                                                Activar
+                                            </Button>
+                                        </ListGroup.Item>
+                                    ))}
+                                </ListGroup>
+                            )}
+                        </Card.Body>
+                    </Card>
+                </Col>
+            </Row>
+
+            {/* Add New Question */}
+            <Row className="mb-4">
+                <Col>
+                    <Card>
+                        <Card.Header as="h5">Agregar Nueva Pregunta</Card.Header>
+                        <Card.Body>
+                            <Form.Group className="mb-3">
+                                <Form.Control
+                                    type="text"
+                                    value={newQuestion}
+                                    onChange={(e) => setNewQuestion(e.target.value)}
+                                    placeholder="Nueva pregunta"
+                                    onKeyPress={(e) => e.key === 'Enter' && handleAddQuestion()}
+                                />
+                            </Form.Group>
+                            <Button variant="primary" onClick={handleAddQuestion}>
+                                Agregar
+                            </Button>
+                        </Card.Body>
+                    </Card>
+                </Col>
+            </Row>
+
+            {/* Submit Button */}
+            <Row className="mb-4">
+                <Col className="text-center">
+                    <Button 
+                        variant="success" 
+                        size="lg"
+                        onClick={handleSubmit}
+                        disabled={theme.activeQuestions.length === 0}
+                    >
+                        Guardar Cambios
+                    </Button>
+                </Col>
+            </Row>
+
+            {/* Success Modal */}
+            <Modal show={showSuccess} onHide={() => { setShowSuccess(false); navigate('/temas'); }} centered>
+                <Modal.Body className="text-center p-4">
+                    <div className="text-success mb-3" style={{ fontSize: '3rem' }}>
+                        <i className="bi bi-check-circle-fill"></i>
+                    </div>
+                    <h3>Tema actualizado correctamente</h3>
+                    <p>Redirigiendo a la lista de temas...</p>
+                </Modal.Body>
+            </Modal>
+        </Container>
     );
 };
 

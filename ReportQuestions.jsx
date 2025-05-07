@@ -3,6 +3,9 @@ import { useNavigate } from "react-router-dom";
 import 'devextreme/dist/css/dx.light.css';
 import "../Styles/Dashboard.css"
 import MiniPieChart from './PieChart';
+import { Navbar, Nav, Button, Spinner, Container, Row, Col } from "react-bootstrap";
+import 'bootstrap/dist/css/bootstrap.min.css';
+import 'bootstrap-icons/font/bootstrap-icons.css';
 
 
 const Reportquestion = () => {
@@ -49,23 +52,37 @@ const Reportquestion = () => {
         }
     return (
         <div>
-            <nav className="dashboard-nav">
-                <div className="nav-user-profile">
-                <img src={user.photo} alt={user.displayName} className="user-avatar"
-            onError={(e) => {
-              e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName)}&background=0078d4&color=fff`;
-            }}
-          />
-          <span className="user-name">{user.displayName}</span>
-                </div>
-                <div className="nav-menu">
-                    <span className="preguntaClave" onClick={() => navigate("/preguntas-clave")}>Preguntas Clave</span>
-                    <span className="temas" onClick={() => navigate("/temas")}>Temas</span>
-                    <span className="enrolamiento" onClick={() => navigate("/enrolamiento")}>Enrolamiento</span>
-                    <span className="dashboard" onClick={() => navigate("/dashboard")}>Dashboard</span>
-                </div>
-                <button onClick={handleLogout} className="logout-btn">Sign out</button>
-            </nav>
+            {/* Navbar with centered options */}
+                        <Navbar bg="primary" variant="dark" expand="lg" className="px-3">
+                            <Container fluid>
+                                <Navbar.Brand className="d-flex align-items-center me-auto"> {/* Changed to me-auto */}
+                                    <img
+                                        src={user.photo}
+                                        alt={user.displayName}
+                                        className="rounded-circle me-2"
+                                        width="40"
+                                        height="40"
+                                        onError={(e) => {
+                                            e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName)}&background=0078d4&color=fff`;
+                                        }}
+                                    />
+                                    <span className="d-none d-sm-inline">{user.displayName}</span>
+                                </Navbar.Brand>
+                                
+                                <Navbar.Toggle aria-controls="main-navbar" />
+                                
+                                <Navbar.Collapse id="main-navbar">
+                                    <Nav className="mx-auto"> {/* Changed to mx-auto to center the nav items */}
+                                        <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/preguntas-clave")}>Preguntas Clave</Nav.Link>
+                                        <Nav.Link as="div" className="nav-link-pointer active" onClick={() => navigate("/temas")}>Temas</Nav.Link>
+                                        <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/enrolamiento")}>Enrolamiento</Nav.Link>
+                                        <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/dashboard")}>Dashboard</Nav.Link>
+                                    </Nav>
+                                    <Button variant="outline-light" className="ms-auto" onClick={handleLogout}>Sign out</Button> {/* Changed to ms-auto */}
+                                </Navbar.Collapse>
+                            </Container>
+                        </Navbar>
+                        
             <button style={{ padding: '6px 12px', backgroundColor: '#007BFF',color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer'}}
                         onClick={() => navigate('/preguntas-clave')}>
                         Volver

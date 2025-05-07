@@ -1,38 +1,72 @@
 import React, { useState } from "react";
-import { useNavigate} from "react-router-dom"; 
-import "../Styles/NewTheme.css"
+import { useNavigate } from "react-router-dom";
+import { Container, Form, Button, ListGroup, Alert, Modal, Row, Col, Card } from "react-bootstrap";
+import 'bootstrap/dist/css/bootstrap.min.css';
+import 'bootstrap-icons/font/bootstrap-icons.css';
 
 const NewTheme = () => {
     const navigate = useNavigate();
-    const [themeName,setThemeName] = useState('');
-    const [questions,setQuestions] = useState(['']);
-    const [showConfirmation,setShowConfirmation] = useState(false);
-    const [showSuccess,setShowSuccess] = useState(false);
+    const [themeName, setThemeName] = useState('');
+    const [currentQuestion, setCurrentQuestion] = useState('');
+    const [questions, setQuestions] = useState([]);
+    const [showConfirmation, setShowConfirmation] = useState(false);
+    const [showSuccess, setShowSuccess] = useState(false);
+    const [error, setError] = useState('');
 
     const handleAddQuestion = () => {
-        setQuestions([...questions,''])
+        if (!currentQuestion.trim()) {
+            setError('La pregunta no puede estar vacía');
+            return;
+        }
+
+        if (questions.some(q => q.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() === 
+            currentQuestion.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase())) {
+            setError('Esta pregunta ya existe en el tema');
+            return;
+        }
+
+        setQuestions([...questions, currentQuestion.trim()]);
+        setCurrentQuestion('');
+        setError('');
     };
 
-    const handleQuestionChange = (index,value) =>{
-        const newQuestion = [...questions];
-        newQuestion[index] = value;
-        setQuestions(newQuestion);
+    const handleQuestionChange = (e) => {
+        setCurrentQuestion(e.target.value);
+        if (error) setError('');
     };
 
-    const handleSubmit = () =>{
+    const handleRemoveQuestion = (index) => {
+        const newQuestions = [...questions];
+        newQuestions.splice(index, 1);
+        setQuestions(newQuestions);
+    };
+
+    const handleSubmit = () => {
+        if (!themeName.trim()) {
+            setError('El nombre del tema es requerido');
+            return;
+        }
+
+        if (questions.length === 0) {
+            setError('Debe agregar al menos una pregunta');
+            return;
+        }
+
         setShowConfirmation(true);
     };
 
-    const confirmSubmit = async () =>{
-        setShowConfirmation(false)
+    const confirmSubmit = async () => {
+        setShowConfirmation(false);
 
-        try{
-            const response = await fetch('http://localhost:3000/api/themes',{
-                method:'POST', headers: {
+        try {
+            const response = await fetch('http://localhost:3000/api/themes', {
+                method: 'POST',
+                headers: {
                     'Content-Type': 'application/json',
-                }, body: JSON.stringify({
-                    nombre:themeName,
-                    preguntas:questions.filter(q => q.trim() !== '')
+                },
+                body: JSON.stringify({
+                    nombre: themeName,
+                    preguntas: questions
                 })
             });
 
@@ -40,96 +74,147 @@ const NewTheme = () => {
 
             if (!response.ok) {
                 throw new Error(data.message || 'Error al crear el tema');
-              }
+            }
 
             setShowSuccess(true);
-            setTimeout(() => window.location.href = '/temas', 2000);
-        } catch (error){
+            setTimeout(() => navigate('/temas'), 2000);
+        } catch (error) {
             console.error('Submission error:', error);
-            alert(`Error: ${error.message}`);
-        } 
-   
+            setError(`Error: ${error.message}`);
+        }
     };
 
-    const cancelSubmit = () =>{
+    const cancelSubmit = () => {
         setShowConfirmation(false);
     };
 
     return (
-        <div className="new-theme-container">
-            <div className="new-theme-header">
-                <h1>Nuevo Tema</h1>
-                <button onClick={() => navigate('/temas')} className="back-button">
-                    Volver
-                </button>
-            </div>
-            <div className="theme-form">
-                <div className="form-group">
-                    <input type="text" value={themeName} onChange={(e) => setThemeName(e.target.value)}
-                    placeholder="Nuevo Tema">
-                    </input>
-                </div>
-                <div className="question-section">
-                    {questions.map((question,index) =>(
-                        <div className="question-input" key={index}>
-                            <input type="text" value={question} onChange={(e) => handleQuestionChange(index,e.target.value)}
-                            placeholder={`Pregunta ${index + 1}`}>
-                            </input>
-                        </div>
-                    )
-                    )}
-                <button className="add-question-btn" onClick={handleAddQuestion}>
-                    +
-                </button>
-                </div>
-                <div className="preview-section">
-                    {themeName && (
-                        <div className="theme-preview">
-                            <h4>{themeName}</h4>
-                            <ul>
-                                {questions.filter(q => q.trim() !== '').map((question,index) => (
-                                    <li key={index}>{question}</li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
-                </div>
-                <button onClick={handleSubmit} className="submit-btn">
-                    Enviar
-                </button>
-            </div>
-            {/* Confirmación de envio */}
-            {showConfirmation && (
-                <div className="modal-overlay">
-                    <div className="confirmation-modal">
-                        <h3>¿Estas seguro de enviar el nuevo tema?</h3>
-                        <div className="modal-buttons">
-                            <button className="cancel-btn" onClick={cancelSubmit}>
-                                Cancelar
-                            </button>
-                            <button className="confirm-btn" onClick={confirmSubmit}>
-                                Aceptar
-                            </button>
-                        </div>
-                    </div>
-                </div>
+        <Container className="py-4">
+            <Row className="mb-4">
+                <Col className="d-flex justify-content-between align-items-center">
+                    <h1>Nuevo Tema</h1>
+                    <Button variant="outline-secondary" onClick={() => navigate('/temas')}>
+                        Volver
+                    </Button>
+                </Col>
+            </Row>
+
+            {error && (
+                <Alert variant="danger" onClose={() => setError('')} dismissible>
+                    {error}
+                </Alert>
             )}
 
-            {/* Envio exitoso */}
-            {showSuccess && (
-                <div className="modal-overlay">
-                    <div className="success-modal">
-                        <div className="success-icon">
-                            ✓
+            <Card className="mb-4">
+                <Card.Body>
+                    <Form.Group className="mb-3">
+                        <Form.Label>Nombre del tema</Form.Label>
+                        <Form.Control
+                            type="text"
+                            value={themeName}
+                            onChange={(e) => { setThemeName(e.target.value); if (error) setError(''); }}
+                            placeholder="Nombre del nuevo Tema"
+                        />
+                    </Form.Group>
+                </Card.Body>
+            </Card>
+
+            <Card className="mb-4">
+                <Card.Body>
+                    <Form.Group className="mb-3">
+                        <Form.Label>Agregar pregunta</Form.Label>
+                        <div className="d-flex">
+                            <Form.Control
+                                type="text"
+                                value={currentQuestion}
+                                onChange={handleQuestionChange}
+                                placeholder="Nueva pregunta"
+                                onKeyPress={(e) => e.key === 'Enter' && handleAddQuestion()}
+                            />
+                            <Button 
+                                variant="primary" 
+                                onClick={handleAddQuestion}
+                                disabled={!currentQuestion.trim()}
+                                className="ms-2"
+                            >
+                                <i className="bi bi-plus-lg"></i>
+                            </Button>
                         </div>
-                        <h3>Tema enviado con éxito</h3>
+                    </Form.Group>
+                </Card.Body>
+            </Card>
+
+            <Card className="mb-4">
+                <Card.Body>
+                    <h4 className="mb-3">Preguntas agregadas:</h4>
+                    {questions.length === 0 ? (
+                        <p className="text-muted">No hay preguntas agregadas</p>
+                    ) : (
+                        <ListGroup>
+                            {questions.map((question, index) => (
+                                <ListGroup.Item key={index} className="d-flex justify-content-between align-items-center">
+                                    {question}
+                                    <Button 
+                                        variant="outline-danger" 
+                                        size="sm"
+                                        onClick={() => handleRemoveQuestion(index)}
+                                    >
+                                        <i className="bi bi-x-lg"></i>
+                                    </Button>
+                                </ListGroup.Item>
+                            ))}
+                        </ListGroup>
+                    )}
+                </Card.Body>
+            </Card>
+
+            <div className="text-center">
+                <Button 
+                    variant="success" 
+                    size="lg"
+                    onClick={handleSubmit}
+                    disabled={!themeName.trim() || questions.length === 0}
+                >
+                    Crear Tema
+                </Button>
+            </div>
+
+            {/* Confirmation Modal */}
+            <Modal show={showConfirmation} onHide={cancelSubmit} centered>
+                <Modal.Header closeButton>
+                    <Modal.Title>¿Confirmar creación del tema?</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <p><strong>Nombre del tema:</strong> {themeName}</p>
+                    <p><strong>Preguntas:</strong></p>
+                    <ListGroup>
+                        {questions.map((q, i) => (
+                            <ListGroup.Item key={i}>{q}</ListGroup.Item>
+                        ))}
+                    </ListGroup>
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={cancelSubmit}>
+                        Cancelar
+                    </Button>
+                    <Button variant="primary" onClick={confirmSubmit}>
+                        Confirmar
+                    </Button>
+                </Modal.Footer>
+            </Modal>
+
+            {/* Success Modal */}
+            <Modal show={showSuccess} onHide={() => {}} centered>
+                <Modal.Body className="text-center p-4">
+                    <div className="text-success mb-3" style={{ fontSize: '3rem' }}>
+                        <i className="bi bi-check-circle-fill"></i>
                     </div>
-                </div>
-            )}
-        </div>
-    )
-
-
-}
+                    <h3>Tema creado exitosamente</h3>
+                    <p>Redirigiendo...</p>
+                </Modal.Body>
+            </Modal>
+        </Container>
+    );
+};
 
 export default NewTheme;
