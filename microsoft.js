@@ -2,6 +2,7 @@ import passport from "passport"
 import { Strategy as MicrosoftStrategy } from "passport-microsoft";
 import {config} from "dotenv"
 import axios from "axios";
+import { userService } from "../services/userService.js";
 
 
 config()
@@ -32,13 +33,27 @@ passport.use("auth-microsoft", new MicrosoftStrategy({
 
         const photoBase64 = Buffer.from(photoResponse.data, 'binary').toString('base64');
         const photoUrl = `data:${photoResponse.headers['content-type']};base64,${photoBase64}`;
-
+        console.log('Estamos aqui');
         profile.photos = [{value:photoUrl}];
-        req.session.microsoftTokens ={
-            accessToken,
-            refreshToken
-        };
-        console.log(profile)
+        //console.log('profile:',profile)
+        console.log('profile:',profile.id);
+        console.log('profile:',profile.displayName);
+        console.log('profile:',profile._json.mail);
+        //console.log('profile:',photoUrl);
+
+        //req.session.microsoftTokens ={
+        //    accessToken,
+        //    refreshToken
+        //};
+
+        let user;
+        console.log('pASO 1')
+        user = await userService.findOrCreateMicrosoftUser(profile);
+        console.log(user)
+        console.log('Paso 2')
+        profile.databaseUser = user
+
+        //console.log(profile)
         done(null,profile)
 
 
@@ -48,7 +63,7 @@ passport.use("auth-microsoft", new MicrosoftStrategy({
         done(null,profile);
     }
     profile._json.photo = profile.photos && profile.photos[0] && profile.photos[0].value;
-    console.log(profile);
+    //console.log(profile);
 
     done(null,profile)
 }));
