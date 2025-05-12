@@ -1,12 +1,13 @@
-import React, { useEffect,useState } from 'react';
+import React, { useEffect,useState} from 'react';
 import { useNavigate } from "react-router-dom"; 
 import DataGrid, { Column, Export, Editing, SearchPanel, HeaderFilter, GroupPanel, Grouping, Selection } from 'devextreme-react/data-grid';
+import { CheckBox } from 'devextreme-react/check-box';
 import 'devextreme/dist/css/dx.light.css';
 import "../Styles/Dashboard.css"
 import saveAs from 'file-saver';
 import { Workbook } from 'exceljs';
 import { exportDataGrid } from 'devextreme/excel_exporter';
-import { Navbar, Nav, Button, Spinner, Container, Row, Col } from "react-bootstrap";
+import { Navbar, Nav, Button, Spinner, Container, Row, Col, Badge } from "react-bootstrap";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
 
@@ -28,7 +29,15 @@ const onExporting = (e) => {
 const Keyquestion = () => {
     const [user, setUser] = useState(null);
     const [loading,setLoading] = useState(true);
+    const [usuarios, setUsuarios] = useState([]);
+    const [themes,setThemes] = useState([]);
+    const [SelectedQuestions,setSelectedQuestions] = useState([]);
+    const [selectedUserKeys, setSelectedUserKeys] = useState([]);
+    const [showValidationMessage, setShowValidationMessage] = useState(false);
+    const [toastMessage,setToastMessage] = useState("");
+    const [keyQuestionName, setKeyQuestionName] = useState("");
     const navigate = useNavigate();
+
 
     useEffect(() => {
             const userData = sessionStorage.getItem("user");
@@ -55,29 +64,104 @@ const Keyquestion = () => {
     };
 
 
+    useEffect(() => {
+        const fetchUsers = async () => {
+          try {
+            const response = await fetch('http://localhost:3000/api/themes/roles');
+            if (!response.ok) {
+              const errorData = await response.json().catch(() => ({
+                message: 'Error desconocido'
+              }));
+              throw new Error(errorData.message || 'La respuesta de la web no fue satisfactoria');
+            }
+      
+            const data = await response.json();
+            console.log(data)
+      
+            // Transformación de datos
+            const usuariosMap = new Map();
+            const preselected = [];
 
-    const [usuarios] = useState([
-        { id: 1, nombre: 'Edgar Lopez', correo: 'edgar.lopez@gmail.com', telefono: '5523819056', puesto: 'Supervisor' },
-        { id: 2, nombre: 'Sara Herrera', correo: 'sara.herrera@gmail.com', telefono: '5523450098', puesto: 'Administrador' },
-        { id: 3, nombre: 'Guadalupe Perez', correo: 'guadalupe.perez@gmail.com', telefono: '5532780098', puesto: 'Secretaria' },
-        { id: 4, nombre: 'Jose Garcia', correo: 'jose.garcia@gmail.com', telefono: '1122345687', puesto: 'Gerente' },
-        { id: 5, nombre: 'Pedro Martinez', correo: 'pedro.martinez@gmail.com', telefono: '5567912340', puesto: 'Usuario' },
-        { id: 6, nombre: 'Lucia Gomez', correo: 'lucia.gomez@gmail.com', telefono: '6643279087', puesto: 'Usuario' },
-        { id: 7, nombre: 'Victor Vazquez', correo: 'victor.vazquez@gmail.com', telefono: '5534218907', puesto: 'usuario' },
-    ]);
+            data.recordsets[0].forEach(item => {
+              const { idUsuario, Nombre, nombreTipo } = item;
+              console.log("item:",item)
+              console.log("nombre tipo:",nombreTipo)
+      
+              if (!usuariosMap.has(idUsuario)) {
+                usuariosMap.set(idUsuario, {
+                  idUsuario,
+                  Nombre,
+                  nombreTipo,
+                  isComite: nombreTipo.toLowerCase() === 'comite',
+                });
+              }
+
+              if (nombreTipo.toLowerCase() === 'comite') {
+                preselected.push(idUsuario);
+                }
+            });
+
+            
+      
+            const usuariosArray = Array.from(usuariosMap.values());
+            setUsuarios(usuariosArray);
+            setSelectedUserKeys(preselected);
+            console.log('usuariosArray',usuariosArray)
+          } catch (error) {
+            console.error('Error obteniendo los datos', error);
+          }
+        };
+      
+        fetchUsers();
+      }, []);
+
+
+        
+      
+    useEffect(() => {
+            const fetchThemes = async () => {
+                try {
+                    const response = await fetch('http://localhost:3000/api/themes');
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({
+                            message: 'Error desconocido'
+                        }));
+                        throw new Error(errorData.message || 'La respuesta de la web no fue satisfactoria');
+                    }
+    
+                    const data = await response.json();
+                    console.log('respuesta obtenida',data)
+                    setThemes(data.map(theme => ({
+                        id: theme.id,
+                        nombre: theme.nombre,
+                        questions: theme.preguntas || [],
+                        flag:theme.flag,
+                        idQuestions : theme.preguntas_id || [],
+                    })));
+                } catch (error) {
+                    console.error('Error obteniendo los datos', error);
+                }
+            };
+    
+            fetchThemes();
+        }, []);
+
+
+    const handleCheckboxChange = (themeId, questionText) => {
+        setSelectedQuestions((prev) => {
+            const prevSelected = prev[themeId] || [];
+            const isSelected = prevSelected.includes(questionText);
+            const updated = isSelected
+            ? prevSelected.filter((q) => q !== questionText)
+            : [...prevSelected, questionText];
+            return { ...prev, [themeId]: updated };
+        });
+       };
+      
 
     const [showDataGrid, setShowDataGrid] = useState(false);
     const [showTemas, setShowTemas] = useState(false);
-    const [temasSeleccionados, setTemasSeleccionados] = useState([]);
-    const listaTemas = ['Innovación', 'Satisfacción', 'Productividad', 'Liderazgo', 'Compromiso'];
-
-    const toggleTema = (tema) => {
-        if (temasSeleccionados.includes(tema)) {
-            setTemasSeleccionados(temasSeleccionados.filter(t => t !== tema));
-        } else {
-            setTemasSeleccionados([...temasSeleccionados, tema]);
-        }
-    };
+    
 
     const handleShowDataGrid = () => {
         setShowDataGrid(!showDataGrid);
@@ -91,9 +175,69 @@ const Keyquestion = () => {
         );
     }
 
+    const hasSelectedQuestions = () => {
+        return Object.values(SelectedQuestions).some((questions) => questions.length > 0);
+    };
+
+    const showValidationPopup = (message) => {
+        setToastMessage(message);
+        setShowValidationMessage(true);
+        setTimeout(() => {
+            setShowValidationMessage(false);
+        }, 3000);
+        console.log(toastMessage)
+    };
+
+    const handleSubmit = async () => {
+
+        if (!keyQuestionName.trim().length > 0) {
+            const message = 'Debes escribir el nombre de la pregunta clave'
+            showValidationPopup(message);
+
+        }
+
+        if (!hasSelectedQuestions()) {
+            const message = 'Debes seleccionar al menos una pregunta '
+            showValidationPopup(message);
+
+        }
+
+        console.log('Preguntas seleccionadas:', SelectedQuestions);
+        console.log('Usuarios seleccionados:', selectedUserKeys);
+        console.log('Nombre Pregunta',keyQuestionName)
+
+        const payload = {
+            nombrePreguntaClave: keyQuestionName,
+            usuarios: selectedUserKeys,
+            preguntasPorTema: SelectedQuestions
+        };
+
+        console.log('respuesta enviada',payload)
+
+        try {
+            const response = await fetch('http://localhost:3000/api/themes/crear/preguntaClave', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+    
+            if (!response.ok) {
+                throw new Error('Error al guardar los datos');
+            }
+    
+            showValidationPopup('Datos guardados exitosamente.');
+        } catch (error) {
+            console.error(error);
+            showValidationPopup('Error al guardar los datos.');
+        }     
+        
+    };
+
     return (
         <div>
-            {/* Navbar with centered options */}
+            {/* Opciones de preguntas y personas en el centro */}
                         <Navbar bg="primary" variant="dark" expand="lg" className="px-3">
                             <Container fluid>
                                 <Navbar.Brand className="d-flex align-items-center me-auto"> {/* Changed to me-auto */}
@@ -124,18 +268,15 @@ const Keyquestion = () => {
                             </Container>
                         </Navbar>
 
-            <button style={{ padding: '6px 12px', backgroundColor: '#007BFF',color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer'}}
-                        onClick={() => navigate('/preguntas-clave')}>
-                        Volver
-            </button>
+            
 
             <div style={{ padding: '20px', border: '1px solid rgb(178, 176, 176)', borderRadius: '8px', margin: '15px'}}>
                 <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px', marginBottom: '20px' }}>
                 <h3 style={{ margin: 0 }}>Pregunta Clave</h3>
                 <input 
                     type="text" 
-                    value="¿Debo entrar al negocio con gobierno?" 
-                    readOnly 
+                    value={keyQuestionName}
+                    onChange={(e) => setKeyQuestionName(e.target.value)}
                     style={{ padding: '8px', fontSize: '16px', width: '300px', border: '1px solid #ccc', borderRadius: '4px' }} 
                 />
                 </div>
@@ -169,16 +310,21 @@ const Keyquestion = () => {
                         border: '1px solid #d3d3d3',
                         borderRadius: '8px',
                     }}>
-                        {listaTemas.map((tema, index) => (
-                            <div key={index}>
-                                <label>
-                                    <input
-                                        type="checkbox"
-                                        checked={temasSeleccionados.includes(tema)}
-                                        onChange={() => toggleTema(tema)}
+                        {themes.map((theme) => (
+                            <div key={theme.id} style={{ marginBottom: '20px' }}>
+                            <h3 style={{ marginBottom: '10px' }}>{theme.nombre}</h3>
+                            <ul style={{ listStyleType: 'none', paddingLeft: 0 }}>
+                                {theme.questions.map((question, index) => (
+                                <li key={`${theme.id}-${index}`} className="mb-2" style={{ display: 'flex', alignItems: 'center' }}>
+                                    <Badge bg="secondary" className="me-2">{index + 1}</Badge>
+                                    <CheckBox
+                                    text={question}
+                                    value={SelectedQuestions[theme.id]?.includes(question) || false}
+                                    onValueChanged={() => handleCheckboxChange(theme.id, question)}
                                     />
-                                    {` ${tema}`}
-                                </label>
+                                </li>
+                                ))}
+                            </ul>
                             </div>
                         ))}
                     </div>
@@ -213,18 +359,17 @@ const Keyquestion = () => {
                     <DataGrid
                     
                     dataSource={usuarios}
-                    keyExpr="id"
+                    keyExpr="idUsuario"
                     showBorders={true}
                     allowColumnReordering={true}
                     rowAlternationEnabled={true}
                     columnAutoWidth={true}
                     repaintChangesOnly={true}
                     onExporting={onExporting}
-                    onSaving={(e) => {
-                        console.log('Cambios guardados:', e.changes);
-                    }}
+                    // selectedRowKeys={selectedUserKeys}
+                    // onSelectedRowKeysChange={(newSelection) => setSelectedUserKeys(newSelection)}
                 >
-                    <Selection mode="multiple" />
+                    {/* <Selection mode="multiple" /> */}
                     <GroupPanel visible={true} />
                     <HeaderFilter visible={true} />
                     <SearchPanel visible={true} highlightCaseSensitive={true} />
@@ -234,12 +379,36 @@ const Keyquestion = () => {
                         mode="row"                        
                         newRowPosition="first"
                     />
-                    <Column dataField="id" caption="ID" allowEditing={false} width={50} />
-                    <Column dataField="nombre" caption="Nombre" />
-                    <Column dataField="correo" caption="Correo" />
-                    <Column dataField="telefono" caption="Telefono" />
-                    <Column dataField="puesto" caption="Puesto" />
+                    <Column
+                            caption=""
+                            width={90}
+                            cellRender={({ data }) => (
+                                <input
+                                    type="checkbox"
+                                    checked={selectedUserKeys.includes(data.idUsuario)}
+                                    disabled={data.isComite}
+                                    onChange={(e) => {
+                                        const checked = e.target.checked;
+                                        if (checked) {
+                                            setSelectedUserKeys(prev => [...prev, data.idUsuario]);
+                                        } else {
+                                            setSelectedUserKeys(prev => prev.filter(id => id !== data.idUsuario));
+                                        }
+                                    }}
+                                    style={{
+                                        width: '20px',  
+                                        height: '20px',
+                                        cursor: data.isComite ? 'not-allowed' : 'pointer'
+                                    }}
+                                />
+                            )}
+                        />
+                    <Column dataField="idUsuario" caption="ID" allowEditing={false} width={50} />
+                    <Column dataField="Nombre" caption="Nombre" />
+                    <Column dataField="nombreTipo" caption="Rol" />
                 </DataGrid>
+
+                
 
                     </div>
                     
@@ -247,15 +416,37 @@ const Keyquestion = () => {
 
                 <div style={{margin: '0 auto', width: '65%', marginBottom: '20px', display: 'block',
                         padding: '10px 20px',}}>
-                    <button style={{ padding: '6px 12px', backgroundColor: '#007BFF',color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer'}}>
+                    <button style={{ padding: '6px 12px', backgroundColor: '#007BFF',color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer'}}
+                        onClick={handleSubmit}>
                         Guardar Cambios
                     </button>        
                 </div>  
-            </div>
 
-                      
-            
+                <div className="w-100 d-flex justify-content-end mt-3">
+                    <Button
+                        variant="primary"
+                        onClick={() => navigate('/preguntas-clave')}
+                    >
+                        Volver
+                    </Button>
+                </div>
+            </div>
+            {showValidationMessage && (
+                <div className="position-fixed top-0 end-0 p-3" style={{ zIndex: 9999 }}>
+                    <div className="toast align-items-center text-white bg-danger border-0 show">
+                        <div className="d-flex">
+                            <div className="toast-body">
+                                Llene todos los campos antes de continuar.
+                            </div>
+                        </div>
+                    </div> 
+                    </div>
+             )}
+    
+          
         </div>
+
+        
     );
 };
 

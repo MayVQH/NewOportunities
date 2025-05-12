@@ -9,7 +9,6 @@ const EditTheme = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [showSuccess, setShowSuccess] = useState(false);
-
     const [theme, setTheme] = useState({
         name: '',
         activeQuestions: [],
@@ -20,10 +19,12 @@ const EditTheme = () => {
     useEffect(() => {
         const fetchThemeData = async () => {
             try {
-                const response = await fetch(`http://localhost:3000/api/themes/${id}/full`);
+                const response = await fetch(`http://localhost:3000/api/themes/full/${id}`);
+                console.log('response',response)
                 if (!response.ok) throw new Error('Error cargando el tema');
                 
                 const themeData = await response.json();
+                console.log(themeData)
 
                 setTheme({
                     name: themeData.nombre,
@@ -79,12 +80,19 @@ const EditTheme = () => {
         });
     };
 
-    const handleRemoveQuestion = (questionId) => {
-        setTheme(prev => ({
-            ...prev,
-            activeQuestions: prev.activeQuestions.filter(q => q.id !== questionId)
-        }));
+    const handleEditQuestion = (questionId) => {
+        //setHabilitado(true)
+        console.log(questionId)
+
+        const input = document.getElementById('editq'+questionId) ;
+        input.disabled = false
     };
+
+    const handleChange = (id, newValue) => {
+        const actualizadas = theme.activeQuestions.find(a => a.id == id);
+        actualizadas.text = newValue;
+        //console.log('pregunta activada',theme.activeQuestions)
+      };
 
     const handleSubmit = async () => {
         try {
@@ -97,11 +105,14 @@ const EditTheme = () => {
                     inactiveQuestions: theme.inactiveQuestions
                 })
             });
+
     
             if (!response.ok) {
                 const errorData = await response.json();
                 throw new Error(errorData.message || 'Error updating theme');
             }
+
+            console.log(theme.activeQuestions)
     
             setShowSuccess(true);
         } catch (error) {
@@ -151,20 +162,21 @@ const EditTheme = () => {
                                 <ListGroup variant="flush">
                                     {theme.activeQuestions.map((question) => (
                                         <ListGroup.Item key={question.id} className="d-flex justify-content-between align-items-center">
-                                            <span>{question.text}</span>
+                                            <input type="text" id={`editq${question.id}`} defaultValue={question.text} 
+                                            onChange={(e) => handleChange(question.id, e.target.value)} disabled/>
                                             <div>
                                                 <Button 
                                                     variant="outline-warning" 
                                                     size="sm" 
                                                     className="me-2"
-                                                    onClick={() => handleDeactivateQuestion(question.id)}
+                                                    onClick={() => handleEditQuestion(question.id)}
                                                 >
-                                                    Desactivar
+                                                <i className="bi bi-pencil"/>
                                                 </Button>
                                                 <Button 
                                                     variant="outline-danger" 
                                                     size="sm"
-                                                    onClick={() => handleRemoveQuestion(question.id)}
+                                                    onClick={() => handleDeactivateQuestion(question.id)}
                                                 >
                                                     <i className="bi bi-x-lg"></i>
                                                 </Button>

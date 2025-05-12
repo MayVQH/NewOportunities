@@ -8,12 +8,7 @@ import cors from 'cors';
 import { getConnection,sql } from "./config/database.js";
 import session from 'express-session'
 
-//import { sql, poolPromise } from "../config/db";
-//import { userService } from "./services/userService.js";
-
 const app = express()
-
-//const getConnection = require('./config/database.js'); // Asegúrate de importar correctamente
 let pool;
 
 pool = await getConnection();
@@ -28,7 +23,6 @@ async function initialize(){
 
 async function testConnection() {
     try {
-      //const pool = await getConnection();
       const result = await pool.request().query('SELECT 1 as test');
       console.log('Database test query successful:', result.recordset);
     } catch (error) {

@@ -44,10 +44,12 @@ const Temas = () => {
                 }
 
                 const data = await response.json();
+                console.log('respuesta',data)
                 setThemes(data.map(theme => ({
                     id: theme.id,
                     nombre: theme.nombre,
-                    questions: theme.preguntas || []
+                    questions: theme.preguntas || [],
+                    flag:theme.flag
                 })));
             } catch (error) {
                 console.error('Error obteniendo los datos', error);
@@ -142,24 +144,34 @@ const Temas = () => {
                 </Container>
             </Navbar>
 
-            {/* Main Content */}
+            {/* Contenido principal */}
             <Container fluid className="flex-grow-1 py-4">
-                {/* Title and Add Button Row */}
+                {/* Titulo y boton de añadir */}
                 <Row className="mb-4 justify-content-center">
                     <Col xs="auto" className="d-flex align-items-center">
                         <h1 className="mb-0 me-3">Temas</h1>
                         <Button 
                             variant="primary" 
                             onClick={() => navigate("/temas/nuevo")}
-                            className="rounded-circle"
+                            className="rounded-circle d-flex justify-content-center align-items-center fs-3 me-2"
                             style={{ width: '40px', height: '40px' }}
                         >
                             +
                         </Button>
+
+                        {/* Botón de editar */}
+                        <Button 
+                            variant="secondary"
+                            onClick={() => navigate("/temas/tema/editar")} // Cambia esta ruta según sea necesario
+                            className="rounded-circle d-flex justify-content-center align-items-center"
+                            style={{ width: '40px', height: '40px' }}
+                        >
+                            <i className="bi bi-pencil"></i>
+                        </Button>
                     </Col>
                 </Row>
 
-                {/* Centered Themes List */}
+                {/* Temas centrados*/}
                 <Row className="justify-content-center">
                     {themes.map((theme) => (
                         <Col key={theme.id} xs={12} md={8} lg={6} xl={4} className="mb-4">
@@ -202,7 +214,7 @@ const Temas = () => {
                 </Row>
             </Container>
 
-            {/* Delete Confirmation Modal */}
+            {/* Dialogo de eliminación */}
             <Modal show={showDeleteModal} onHide={cancelDelete} centered>
                 <Modal.Header closeButton>
                     <Modal.Title>Confirmar eliminación</Modal.Title>
@@ -221,7 +233,7 @@ const Temas = () => {
                 </Modal.Footer>
             </Modal>
 
-            {/* Success Modal */}
+            {/* Diaologo de exito */}
             <Modal show={showSuccessModal} onHide={() => setShowSuccessModal(false)} centered>
                 <Modal.Body className="text-center p-4">
                     <div className="text-success mb-3" style={{ fontSize: '3rem' }}>

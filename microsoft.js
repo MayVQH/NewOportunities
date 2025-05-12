@@ -62,8 +62,4 @@ passport.use("auth-microsoft", new MicrosoftStrategy({
         profile.photo = [];
         done(null,profile);
     }
-    profile._json.photo = profile.photos && profile.photos[0] && profile.photos[0].value;
-    //console.log(profile);
-
-    done(null,profile)
 }));
