@@ -63,7 +63,7 @@ const Login = () => {
                             className="d-flex align-items-center justify-content-center mx-auto px-4 py-2 mb-4"
                         >
                             <svg
-                                xmlns="https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg"
+                                xmlns="http://www.w3.org/2000/svg"
                                 width="20"
                                 height="20"
                                 viewBox="0 0 100 100"

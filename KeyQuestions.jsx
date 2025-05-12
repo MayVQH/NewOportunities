@@ -194,12 +194,14 @@ const Keyquestion = () => {
         if (!keyQuestionName.trim().length > 0) {
             const message = 'Debes escribir el nombre de la pregunta clave'
             showValidationPopup(message);
+            return
 
         }
 
         if (!hasSelectedQuestions()) {
             const message = 'Debes seleccionar al menos una pregunta '
             showValidationPopup(message);
+            return
 
         }
 
@@ -222,7 +224,8 @@ const Keyquestion = () => {
         const payload = {
             nombrePreguntaClave: formattedQuestion,
             usuarios: selectedUserKeys,
-            preguntasPorTema: SelectedQuestions
+            preguntasPorTema: SelectedQuestions,
+            creador : user.email
         };
 
         console.log('respuesta enviada',payload)
@@ -450,7 +453,7 @@ const Keyquestion = () => {
                     <div className="toast align-items-center text-white bg-danger border-0 show">
                         <div className="d-flex">
                             <div className="toast-body">
-                                Llene todos los campos antes de continuar.
+                                    {toastMessage}
                             </div>
                         </div>
                     </div> 

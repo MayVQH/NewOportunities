@@ -484,31 +484,40 @@ export const createKeyQuestion = async (req, res) => {
         const preguntaClave = req.body.nombrePreguntaClave
         const usuarios = req.body.usuarios
         const preguntaTema = req.body.preguntasPorTema
+        const userEmail = req.body.creador
 
         console.log('preguntaclave',preguntaClave)
         console.log('usuarios',usuarios)
         console.log('temas y preguntas',preguntaTema)
+        console.log('correo',userEmail)
 
         if(!preguntaClave || !usuarios || !preguntaTema){
             return res.status(400).json({message:'Requiere todos los campos de nombre, usuarios y preguntas'});
         }
+        
+        //
+        const allQuestions = Object.values(preguntaTema).flat(); // extrae todos los arrays y los aplana
+        const filteredQuestions = allQuestions.filter(q => q.trim() !== '');
 
-        // const filteredQuestions = preguntaTema.filter(q => q !== '');
-        // if (filteredQuestions.length == 0) {
-        //     return res.status(400).json({ message: 'Debe incluir al menos una pregunta' });
-        // }
+        if (filteredQuestions.length === 0) {
+        return res.status(400).json({ message: 'Debe incluir al menos una pregunta' });
+        }
 
-        // const filteredUsers = usuarios.filter(q => q !== '');
-        // if (filteredUsers.length == 0) {
-        //     return res.status(400).json({ message: 'Debe incluir al menos un usuario' });
-        // }
+        const filteredUsers = Array.isArray(usuarios) ? usuarios.filter(u => u.trim() !== '') : [];
+
+        if (filteredUsers.length === 0) {
+        return res.status(400).json({ message: 'Debe incluir al menos un usuario' });
+        }
+
+        //
 
         transaction = new sql.Transaction(conn)
         await transaction.begin()
 
         const KeyQuestionResult = await new sql.Request(transaction)
             .input('nombre', sql.NVarChar, preguntaClave)
-            .query('INSERT INTO PreguntasClave (nombre) OUTPUT inserted.id VALUES (@nombre)');
+            .input('correo',sql.NVarChar,userEmail)
+            .query('INSERT INTO PreguntasClave (nombre,creador) OUTPUT inserted.id VALUES (@nombre,@correo)');
 
         console.log('fila agregada',KeyQuestionResult)
         
@@ -545,19 +554,9 @@ export const createKeyQuestion = async (req, res) => {
                     .input('tema_id',sql.UniqueIdentifier,themeId)
                     .input('pregunta_id',sql.UniqueIdentifier,result.recordset[0].id)
                     .query('INSERT INTO PreguntasPreguntaClave (pc_id, texto,tema_id,preguntaTema_id) VALUES (@keyQuestion_id, @texto,@tema_id,@pregunta_id)');
-            }
-            
-            
-            
-            
-            
-            
+            }            
         }
-
-
         await transaction.commit();
-        
-
     } catch (error) {
         if (transaction && transaction._begun) {
             await transaction.rollback();
@@ -568,9 +567,6 @@ export const createKeyQuestion = async (req, res) => {
             details: error.message
         });
     }
-
-    
-
 }
 
 
