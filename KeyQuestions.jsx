@@ -83,7 +83,7 @@ const Keyquestion = () => {
             const preselected = [];
 
             data.recordsets[0].forEach(item => {
-              const { idUsuario, Nombre, nombreTipo } = item;
+              const { idUsuario, Nombre, nombreTipo,Email } = item;
               console.log("item:",item)
               console.log("nombre tipo:",nombreTipo)
       
@@ -93,6 +93,7 @@ const Keyquestion = () => {
                   Nombre,
                   nombreTipo,
                   isComite: nombreTipo.toLowerCase() === 'comite',
+                  Email
                 });
               }
 
@@ -205,7 +206,7 @@ const Keyquestion = () => {
         let formattedQuestion = keyQuestionName.trim();
 
         formattedQuestion = formattedQuestion.charAt(0).toUpperCase() + formattedQuestion.slice(1);
-        
+
         if (!formattedQuestion.startsWith('¿')) {
             formattedQuestion = '¿' + formattedQuestion;
         }
@@ -417,6 +418,7 @@ const Keyquestion = () => {
                         />
                     <Column dataField="idUsuario" caption="ID" allowEditing={false} width={50} />
                     <Column dataField="Nombre" caption="Nombre" />
+                    <Column dataField="Email" caption="Correo" />
                     <Column dataField="nombreTipo" caption="Rol" />
                 </DataGrid>
 

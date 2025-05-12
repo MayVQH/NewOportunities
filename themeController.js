@@ -419,7 +419,8 @@ export const getRoles = async (req, res) => {
         .query(`SELECT t.id as idTipo,
                 t.nombreTipo,
                 u.id as idUsuario,
-                u.Nombre
+                u.Nombre,
+                u.Email
                 FROM Usuarios u
                 JOIN tipoUsuarios t
                 ON u.tipoId = t.id
