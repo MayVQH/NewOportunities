@@ -19,8 +19,17 @@ const NewTheme = () => {
             return;
         }
 
-        if (questions.some(q => q.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() === 
-            currentQuestion.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase())) {
+        const cleanQuestion = (str) => {
+            return str
+                .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // quita tildes
+                .replace(/^[¿?]+|[¿?]+$/g, '') // quita ¿ o ? del inicio o final
+                .trim()
+                .toLowerCase();
+        };
+
+        const normalizedCurrent = cleanQuestion(currentQuestion);
+
+        if (questions.some(q => cleanQuestion(q) === normalizedCurrent)) {
             setError('Esta pregunta ya existe en el tema');
             return;
         }

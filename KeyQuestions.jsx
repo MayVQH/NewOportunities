@@ -202,12 +202,24 @@ const Keyquestion = () => {
 
         }
 
+        let formattedQuestion = keyQuestionName.trim();
+
+        formattedQuestion = formattedQuestion.charAt(0).toUpperCase() + formattedQuestion.slice(1);
+        
+        if (!formattedQuestion.startsWith('¿')) {
+            formattedQuestion = '¿' + formattedQuestion;
+        }
+        if (!formattedQuestion.endsWith('?')) {
+            formattedQuestion += '?';
+        }
+        setKeyQuestionName(formattedQuestion);
+
         console.log('Preguntas seleccionadas:', SelectedQuestions);
         console.log('Usuarios seleccionados:', selectedUserKeys);
-        console.log('Nombre Pregunta',keyQuestionName)
+        console.log('Nombre Pregunta',formattedQuestion);
 
         const payload = {
-            nombrePreguntaClave: keyQuestionName,
+            nombrePreguntaClave: formattedQuestion,
             usuarios: selectedUserKeys,
             preguntasPorTema: SelectedQuestions
         };

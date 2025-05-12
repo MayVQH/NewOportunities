@@ -169,6 +169,7 @@ export const updateMultipleThemes = async (req, res) => {
         const themeResult = await new sql.Request(transaction)
             .input('nombre', sql.NVarChar, nombre)
             .query('INSERT INTO Temas (nombre) OUTPUT inserted.id VALUES (@nombre)');
+
         
         const themeId = themeResult.recordset[0].id;
 
@@ -491,20 +492,69 @@ export const createKeyQuestion = async (req, res) => {
             return res.status(400).json({message:'Requiere todos los campos de nombre, usuarios y preguntas'});
         }
 
-        const filteredQuestions = preguntaTema.filter(q => q !== '');
-        if (filteredQuestions.length === 0) {
-            return res.status(400).json({ message: 'Debe incluir al menos una pregunta' });
-        }
+        // const filteredQuestions = preguntaTema.filter(q => q !== '');
+        // if (filteredQuestions.length == 0) {
+        //     return res.status(400).json({ message: 'Debe incluir al menos una pregunta' });
+        // }
 
-        const filteredUsers = usuarios.filter(q => q !== '');
-        if (filteredUsers.length === 0) {
-            return res.status(400).json({ message: 'Debe incluir al menos un usuario' });
-        }
+        // const filteredUsers = usuarios.filter(q => q !== '');
+        // if (filteredUsers.length == 0) {
+        //     return res.status(400).json({ message: 'Debe incluir al menos un usuario' });
+        // }
 
         transaction = new sql.Transaction(conn)
         await transaction.begin()
 
+        const KeyQuestionResult = await new sql.Request(transaction)
+            .input('nombre', sql.NVarChar, preguntaClave)
+            .query('INSERT INTO PreguntasClave (nombre) OUTPUT inserted.id VALUES (@nombre)');
 
+        console.log('fila agregada',KeyQuestionResult)
+        
+        const KeyQuestionid = KeyQuestionResult.recordset[0].id;
+
+        console.log('id de pregunta clave',KeyQuestionid)
+
+        for (const user of usuarios) {
+            await new sql.Request(transaction)
+                .input('keyQuestion_id', sql.UniqueIdentifier, KeyQuestionid)
+                .input('user', sql.UniqueIdentifier, user)
+                .query('INSERT INTO UsuariosPreguntaClave (pc_id, usuario_id) VALUES (@keyQuestion_id, @user)');
+        }
+
+        for (const temas in preguntaTema) {
+            const themeId = temas
+            console.log('id del tema',themeId)
+            
+            for (const [index,pregunta] of preguntaTema[temas].entries()){
+                const result = await conn.request()
+                
+                .input('id', sql.UniqueIdentifier, themeId)
+                .input('texto',sql.NVarChar,pregunta)
+                .query(`SELECT id
+                        FROM PreguntasTema
+                        WHERE tema_id = @id and texto = @texto
+                    `);
+                console.log(`Preguntas del tema${index + 1}:${pregunta}`,)
+                console.log('resultado del query',result.recordset[0].id)
+
+                await new sql.Request(transaction)
+                    .input('keyQuestion_id', sql.UniqueIdentifier, KeyQuestionid)
+                    .input('texto', sql.NVarChar, pregunta)
+                    .input('tema_id',sql.UniqueIdentifier,themeId)
+                    .input('pregunta_id',sql.UniqueIdentifier,result.recordset[0].id)
+                    .query('INSERT INTO PreguntasPreguntaClave (pc_id, texto,tema_id,preguntaTema_id) VALUES (@keyQuestion_id, @texto,@tema_id,@pregunta_id)');
+            }
+            
+            
+            
+            
+            
+            
+        }
+
+
+        await transaction.commit();
         
 
     } catch (error) {
