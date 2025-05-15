@@ -1,0 +1,601 @@
+import React, { useEffect, useState} from "react";
+import { useNavigate, Outlet,useParams } from "react-router-dom";
+import DataGrid, { Column, Export, Editing, SearchPanel,HeaderFilter, GroupPanel, Grouping} from 'devextreme-react/data-grid';
+import TextBox from 'devextreme-react/text-box';
+import Button from 'devextreme-react/button';
+import Popup from 'devextreme-react/popup';
+import 'devextreme/dist/css/dx.light.css';
+import "../Styles/UserKeyQuestion.css"
+import { Navbar, Nav, Spinner, Container, Row, Col } from "react-bootstrap";
+import 'bootstrap/dist/css/bootstrap.min.css';
+import 'bootstrap-icons/font/bootstrap-icons.css';
+import { useRef } from 'react';
+
+const UserKeyQuestion = () => {
+    const [user, setUser] = useState(null);
+    const { id } = useParams();
+    const [loading, setLoading] = useState(true);
+    const [clavePregunta, setClavePregunta] = useState('');
+    const [keyQuestion, setKeyQuestion] = useState({
+            name: '' ,
+            id: ''        
+        });
+    const [pregunta, setPregunta] = useState({
+            pregunta_pc: []
+        });
+    const [showPopup, setShowPopup] = useState(false);
+    const [showPopupDoc, setShowPopupDoc] = useState(false);
+    const [showPopupUrl, setShowPopupUrl] = useState(false);
+    const [comentarioActual, setComentarioActual] = useState('');
+    const [enlaceActual, setEnlaceActual] = useState('');
+    const [enlaces, setEnlaces] = useState([]);
+    const [comentarios, setComentarios] = useState([]);
+    const [documentos, setDocumentos] = useState([]);
+    const [preguntaSeleccionada, setPreguntaSeleccionada] = useState(null);
+    //const [popupVisible, setPopupVisible] = useState(false);
+    const [confirmVisible, setConfirmVisible] = useState(false);
+    const navigate = useNavigate();
+
+    const fileInputRef = useRef(null);
+    
+      useEffect(() => {
+        const userData = sessionStorage.getItem("user");
+        if (!userData) {
+          navigate("/");
+          return;
+        }
+        setUser(JSON.parse(userData));
+        setLoading(false);
+    
+        const handleMessage = (event) => {
+          if (event.origin === 'http://localhost:3000' && event.data.user) {
+            sessionStorage.setItem("user", JSON.stringify(event.data.user));
+            setUser(event.data.user);
+          }
+        };
+        window.addEventListener("message", handleMessage);
+        return () => window.removeEventListener("message", handleMessage);
+      }, [navigate]);
+    
+      const handleLogout = () => {
+        sessionStorage.removeItem("user");
+        navigate("/");
+      };
+
+
+      useEffect(() => {
+              const fetchThemeData = async () => {
+                  try {
+                      const response = await fetch(`http://localhost:3000/api/themes/preguntasClave/usuario/full/${id}`);
+                      console.log('response',response)
+                      if (!response.ok) throw new Error('Error cargando la pregunta clave');
+                      
+                      const KeyQuestionData = await response.json();
+                      console.log('respuesta obtenida de preguntas clabves',KeyQuestionData)
+                      setKeyQuestion({
+                          name: KeyQuestionData.nombre,
+                          id: KeyQuestionData.id
+                      });
+
+                      setPregunta({
+                        pregunta_pc: KeyQuestionData.preguntas,
+                      })
+                      setLoading(false);
+                      console.log('Nombre de la pregunta clave',KeyQuestionData.nombre)
+                      console.log('id de la prregunta clave',KeyQuestionData.id)
+                      console.log('Preguntas de la pregunta clave',KeyQuestionData.preguntas)
+                  } catch (error) {
+                      console.error('Error:', error);
+                      setLoading(false);
+                  }
+              };
+              fetchThemeData();
+          }, [id]);
+
+    //   const [preguntas, setPreguntas] = useState([
+    //     { id: 1, texto: '¿Pregunta 1?', activo: true },
+    //     { id: 2, texto: '¿Pregunta 2?', activo: false },
+    //     { id: 3, texto: '¿Pregunta 3?', activo: true },
+    //     { id: 4, texto: '¿Pregunta 4?', activo: false },
+    //   ]);
+
+      const abrirPopupComentario = async (pregunta) => {
+        setComentarioActual('');
+        setPreguntaSeleccionada(pregunta);
+        setShowPopup(true);
+      
+        try {
+          const res = await fetch(`http://localhost:3000/api/themes/preguntasClave/comentarios/${pregunta.id}/${user.id}`);
+          const data = await res.json();
+          setComentarios(data);
+        } catch (err) {
+          console.error('Error al obtener comentarios:', err);
+        }
+      };
+
+      const abrirPopupDocumento = async (pregunta) => {
+        setPreguntaSeleccionada(pregunta);
+        setShowPopupDoc(true);
+
+        try {
+            const res = await fetch(`http://localhost:3000/api/themes/preguntasClave/documentos/${pregunta.id}/${user.id}`);
+            const data = await res.json();
+            setDocumentos(data);
+          } catch (err) {
+            console.error('Error al obtener documentos:', err);
+          }
+      
+      };
+
+      const abrirPopupEnlace = async (pregunta) => {
+        setEnlaceActual('');
+        setPreguntaSeleccionada(pregunta);
+        setShowPopupUrl(true);
+      
+        try {
+          const res = await fetch(`http://localhost:3000/api/themes/preguntasClave/enlaces/${pregunta.id}/${user.id}`);
+          const data = await res.json();
+          setEnlaces(data);
+        } catch (err) {
+          console.error('Error al obtener los enlaces:', err);
+        }
+      };
+
+      const enviarComentario = async () => {
+        if (!comentarioActual.trim()) return;
+      
+        const nuevoComentario = {
+          pc_id: keyQuestion.id, 
+          pcp_id: preguntaSeleccionada.id,
+          texto: comentarioActual,
+          creador: user.id
+        };
+        
+        console.log('comentario enviado',nuevoComentario)
+        try {
+          const res = await fetch('http://localhost:3000/api/themes/comentarios/guardar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(nuevoComentario)
+          });
+      
+          if (res.ok) {
+            const comentarioGuardado = await res.json();
+            setComentarios(prev => [...prev, comentarioGuardado]); 
+            setComentarioActual('');           
+          }
+
+
+        } catch (err) {
+          console.error('Error al enviar comentario:', err);
+        }
+      };
+
+
+      const enviarEnlace = async () => {
+        if (!enlaceActual.trim()) return;
+
+        try {
+            new URL(enlaceActual); 
+          } catch (error) {
+            console.error('El enlace ingresado no es una URL válida',error);
+            alert('Por favor, ingresa un enlace válido (por ejemplo, https://ejemplo.com)');
+            return;
+          }
+      
+        const nuevoEnlace = {
+          pc_id: keyQuestion.id, 
+          pcp_id: preguntaSeleccionada.id,
+          texto: enlaceActual,
+          creador: user.id
+        };
+        
+        console.log('enlace enviado',nuevoEnlace)
+        try {
+          const res = await fetch('http://localhost:3000/api/themes/enlace/guardar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(nuevoEnlace)
+          });
+      
+          if (res.ok) {
+            const enlaceGuardado = await res.json();
+            setEnlaces(prev => [...prev, enlaceGuardado]); 
+            setEnlaceActual('');           
+          }
+
+
+        } catch (err) {
+          console.error('Error al enviar el enlace:', err);
+        }
+      };
+
+      if (loading) {
+          return (
+            <Container fluid className="d-flex justify-content-center align-items-center vh-100">
+              <Spinner animation="border" role="status">
+                <span className="visually-hidden">Loading...</span>
+              </Spinner>
+            </Container>
+          );
+        }
+    
+        console.log(clavePregunta)
+
+        
+
+        const uploadfile = async () => {
+            const file = fileInputRef.current?.files[0];
+            const formdata = new FormData();
+
+            formdata.append('archivo',file);
+
+            const nuevoDoc = {
+                pc_id: keyQuestion.id, 
+                pcp_id: preguntaSeleccionada.id,
+                texto: file.name,
+                creador: user.id
+              };
+
+            console.log('archivo',file)
+            formdata.append('metadata', JSON.stringify(nuevoDoc));
+            console.log('datos enviados al back',formdata)
+            const response = await fetch('http://localhost:3000/api/themes/documentos/guardar', {
+                method: 'POST',
+                body: formdata
+              });
+
+            console.log(response)
+          
+        }
+
+        const handleSwitchChange = (index) => (e) => {
+            const newPreguntas = [...pregunta.pregunta_pc];
+            newPreguntas[index].activo = e.target.checked; 
+            setPregunta({
+              ...pregunta,
+              pregunta_pc: newPreguntas
+            });
+          };
+
+
+        const handleSubmit = async () => {
+            try {
+                const estadosPreguntas = pregunta.pregunta_pc.map(p => ({
+                id: p.id,
+                activo: p.activo ?? false,
+                }));
+
+                const nuevoEnlace = {
+                    pc_id: keyQuestion.id, 
+                    creador: user.id,
+                    estadosPreguntas: estadosPreguntas
+                  };
+              
+                console.log('enlace enviado',nuevoEnlace)
+                try {
+                    const res = await fetch('http://localhost:3000/api/themes/preguntaClave/guardar/nuevo', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(nuevoEnlace)
+                    });
+                
+                    console.log('respuesta enviada',res)
+                }catch (error){
+                    console.error('Error al enviar las respuestas:', error);
+                }
+                
+                setTimeout(() => navigate('/preguntaClave/pregunta/lista'), 2000);
+      
+              } catch (err) {
+                console.error('Error al enviar las respuestas:', err);
+              }
+        }
+
+        const handleEnviarClick = () => {
+            setConfirmVisible(true); // Mostrar popup de confirmación
+          };
+
+        const handleConfirmYes = () => {
+        setConfirmVisible(false); 
+        handleSubmit(); 
+        };
+
+        const handleConfirmNo = () => {
+        setConfirmVisible(false); 
+        };
+
+    return (
+        
+        <div >
+            <Navbar bg="primary" variant="dark" expand="lg" className="px-3">
+                <Container fluid>
+                    <Navbar.Brand className="d-flex align-items-center me-auto"> {/* Changed to me-auto */}
+                        <img
+                            src={user.photo}
+                            alt={user.displayName}
+                            className="rounded-circle me-2"
+                            width="40"
+                            height="40"
+                            onError={(e) => {
+                                e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName)}&background=0078d4&color=fff`;
+                            }}
+                        />
+                        <span className="d-none d-sm-inline">{user.displayName}</span>
+                    </Navbar.Brand>
+                    
+                    <Navbar.Toggle aria-controls="main-navbar" />
+                    
+                    <Navbar.Collapse id="main-navbar">
+                        <Nav className="mx-auto">
+                            {(user.tipoId === '7D532F89-A63E-4667-B7CB-A4B477A55017' || user.tipoId === 'D3B78325-006E-4230-AE7E-C188181AE8B8') && (
+                            <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/preguntas-clave")}>Preguntas Clave</Nav.Link>)}
+                            {(user.tipoId === '84F03A04-2891-4DE7-8A3D-DBD2018EAE47') && (
+                            <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/preguntaClave/pregunta/lista")}>Preguntas Clave</Nav.Link>)}
+                            {(user.tipoId === '7D532F89-A63E-4667-B7CB-A4B477A55017' || user.tipoId === 'D3B78325-006E-4230-AE7E-C188181AE8B8') && (
+                            <Nav.Link as="div" className="nav-link-pointer active" onClick={() => navigate("/temas")}>Temas</Nav.Link>)}
+                            {(user.tipoId === '7D532F89-A63E-4667-B7CB-A4B477A55017') && (
+                            <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/enrolamiento")}>Enrolamiento</Nav.Link>)}
+                            {(user.tipoId === '7D532F89-A63E-4667-B7CB-A4B477A55017' || user.tipoId === 'D3B78325-006E-4230-AE7E-C188181AE8B8') && (
+                            <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/dashboard")}>Dashboard</Nav.Link>)}
+                        </Nav>
+                        <Button variant="outline-light" className="ms-auto" onClick={handleLogout}>Sign out</Button> {/* Changed to ms-auto */}
+                    </Navbar.Collapse>
+                </Container>
+            </Navbar>
+
+            <div className="d-flex justify-content-end" style={{ padding: '10px 30px' }}>
+                <button
+                    onClick={() => navigate('/preguntaClave/pregunta/lista')}
+                    style={{
+                        padding: '6px 12px',
+                        backgroundColor: '#007BFF',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer'
+                    }}
+                >
+                    Volver
+                </button>
+            </div>
+
+            <Container className="mt-4">
+                <Row className="mb-3">
+                    <Col>
+                    <label className="form-label fs-5"><strong>Pregunta Clave</strong></label>
+                    <TextBox
+                        value={keyQuestion.name || ""}
+                        onValueChanged={(e) => setClavePregunta(e.value)}
+                        className="form-control"
+                        stylingMode="outlined"
+                        width="100%"
+                        readOnly
+                    />
+                    </Col>
+                </Row>
+
+                <Row>
+                    <Col>
+                    <div className="card">
+                        <div className="card-body">
+                        {pregunta.pregunta_pc.map((question, index) => (
+                            <Row className="align-items-center mb-3" key={question.id}>
+                            <Col xs="auto" className="d-flex align-items-center">
+                            <div className="d-flex align-items-center align-self-center me-3">
+                                <input
+                                    className="custom-bootstrap-switch"
+                                    type="checkbox"
+                                    role="switch"
+                                    id={`switch-${question.id}`}
+                                    checked={question.activo}
+                                    onChange={handleSwitchChange(index)}
+                                />
+                                <span className="switch-label-text ms-2">
+                                    {question.activo ? "Sí" : "No"}
+                                </span>
+                                </div>
+                            </Col>
+                            <Col >
+                                <TextBox
+                                value={question.texto || ""}
+                                readOnly
+                                className="form-control borde-solido"
+                                stylingMode="outlined"
+                                width="100%"
+                                
+                                />
+                            </Col>
+                            <Col xs={2}>
+                                <Button text="Comentario" type="normal" className="w-100" 
+                                onClick={() => abrirPopupComentario(question)}/>
+                            </Col>
+                            <Col xs={2}>
+                                <Button text="Documento" type="normal" className="w-100" 
+                                onClick={() => abrirPopupDocumento(question)}/>
+                            </Col>
+                            <Col xs={2}>
+                                <Button text="Enlace" type="normal" className="w-100"
+                                onClick={() => abrirPopupEnlace(question)} />
+                            </Col>
+                            </Row>
+                        ))}
+                        </div>
+                    </div>
+                    </Col>
+                </Row>
+
+                <Row className="mt-4">
+                    <Col className="d-flex justify-content-end">
+                    <Button
+                        text="Enviar"
+                        type="success"
+                        className="btn btn-success"
+                        style={{ backgroundColor: '#00e600', borderColor: '#00e600' }}
+                        onClick={handleEnviarClick}
+                    />
+                    </Col>
+                </Row>
+            </Container>
+
+            <Popup
+                visible={showPopup}
+                onHiding={() => setShowPopup(false)}
+                dragEnabled
+                closeOnOutsideClick
+                showCloseButton
+                title={preguntaSeleccionada?.texto || "Comentario"}
+                width={700}
+                height={600}
+                >
+                <div>
+                    <label className="fw-bold mb-2">Bitácora de comentarios</label>
+                    <textarea
+                    value={comentarioActual}
+                    onChange={(e) => setComentarioActual(e.target.value)}
+                    className="form-control mb-3"
+                    rows={3}
+                    placeholder="Escribe tu comentario aquí..."
+                    id="inputComentario"
+                    />
+
+                    <Button
+                    text="Enviar comentario"
+                    type="success"
+                    onClick={enviarComentario}
+                    className="mb-3"
+                    />
+
+                    <DataGrid
+                    dataSource={comentarios.recordset}
+                    keyExpr="id"
+                    showBorders={true}
+                    height={300}
+                    >
+                    <Column dataField="id" caption="ID" width={100} />
+                    <Column dataField="NombreUsuario" caption="Creador" width={150} />
+                    <Column dataField="texto" caption="Comentario" />
+                    <Column dataField="hora_creacion" caption="Fecha" dataType="datetime" width={180} />
+                    </DataGrid>
+                </div>
+            </Popup>
+
+            <Popup
+                visible={showPopupDoc}
+                onHiding={() => setShowPopupDoc(false)}
+                dragEnabled
+                closeOnOutsideClick
+                showCloseButton
+                title={preguntaSeleccionada?.texto || "Documento"}
+                width={700}
+                height={600}
+                >
+                <div className="d-flex flex-column mt-4 px-4">
+                    <label className="fw-bold mb-2">Bitácora de Documentos</label>
+                    <input 
+                    type="file"
+                    ref={fileInputRef}
+                    className="form-control mb-2"
+                    />
+
+                    <Button
+                    text="Enviar documento"
+                    type="success"
+                    onClick={uploadfile}
+                    className="ms-3"
+                    />
+
+                    <DataGrid
+                    className="mt-4" 
+                    dataSource={documentos.recordset}
+                    keyExpr="id"
+                    showBorders={true}
+                    height={300}
+                    >
+                    <Column dataField="id" caption="ID" width={100} />
+                    <Column dataField="NombreUsuario" caption="Creador" width={150} />
+                    <Column dataField="documento" caption="Documento" />
+                    <Column dataField="hora_creacion" caption="Fecha" dataType="datetime" width={180} />
+                    </DataGrid>
+
+                </div>
+            </Popup>
+
+            <Popup
+                visible={showPopupUrl}
+                onHiding={() => setShowPopupUrl(false)}
+                dragEnabled
+                closeOnOutsideClick
+                showCloseButton
+                title={preguntaSeleccionada?.texto || "Enlace"}
+                width={700}
+                height={600}
+                >
+                <div>
+                    <label className="fw-bold mb-2">Bitácora de enlaces</label>
+                    <textarea
+                    value={enlaceActual}
+                    onChange={(e) => setEnlaceActual(e.target.value)}
+                    className="form-control mb-3"
+                    rows={3}
+                    placeholder="Ingresa tu enlace aquí..."
+                    id="inputEnlace"
+                    />
+
+                    <Button
+                    text="Enviar enlace"
+                    type="success"
+                    onClick={enviarEnlace}
+                    className="mb-3"
+                    />
+
+                    <DataGrid
+                    dataSource={enlaces.recordset}
+                    keyExpr="id"
+                    showBorders={true}
+                    height={300}
+                    >
+                    <Column dataField="id" caption="ID" width={100} />
+                    <Column dataField="NombreUsuario" caption="Creador" width={150} />
+                    <Column dataField="texto" caption="Enlace" />
+                    <Column dataField="hora_creacion" caption="Fecha" dataType="datetime" width={180} />
+                    </DataGrid>
+                </div>
+            </Popup>
+
+            {/* Popup de confirmación */}
+            <Popup
+                visible={confirmVisible}
+                onHiding={() => setConfirmVisible(false)}
+                dragEnabled={false}
+                closeOnOutsideClick={true}
+                showTitle={false}
+                width={400}
+                height={200}
+            >
+                <div className="text-center p-4">
+                <h5 className="fw-bold mb-4">¿Estás seguro de enviar las respuestas?</h5>
+                <div className="d-flex justify-content-center gap-3">
+                    <button
+                    className="btn btn-primary d-flex align-items-center gap-2"
+                    onClick={handleConfirmYes}
+                    >
+                    <i className="bi bi-hand-thumbs-up-fill"></i>
+                    Aceptar
+                    </button>
+                    <button
+                    className="btn btn-secondary d-flex align-items-center gap-2"
+                    onClick={handleConfirmNo}
+                    >
+                    <i className="bi bi-hand-thumbs-down-fill"></i>
+                    Cancelar
+                    </button>
+                </div>
+                </div>
+            </Popup>
+
+        </div>
+    );
+}
+
+export default UserKeyQuestion;

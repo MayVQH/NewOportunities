@@ -12,6 +12,7 @@ import { Workbook } from 'exceljs';
 import { Navbar, Nav, Button, Spinner, Container, Row, Col } from "react-bootstrap";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
+import Keyquestion from './KeyQuestions';
 
   
 const onExporting = async (e) => {
@@ -60,6 +61,7 @@ const onExporting = async (e) => {
 const Listtheme = () => {
     const [user, setUser] = useState(null);
     const [loading,setLoading] = useState(true);
+    const [keyQuestions, setKeyQuestions] = useState([]);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -85,16 +87,53 @@ const Listtheme = () => {
             sessionStorage.removeItem("user");
             navigate("/");
         };
+
+    useEffect(() => {
+            const fetchKeyQuestion = async () => {
+                try {
+                    const response = await fetch('http://localhost:3000/api/themes/preguntaClave/all');
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({
+                            message: 'Error desconocido'
+                        }));
+                        throw new Error(errorData.message || 'La respuesta de la web no fue satisfactoria');
+                    }
     
-    const [usuarios] = useState([
-        { id: 1, pregunta_clave : '¿Debo entrar al negocio con gobierno?', fecha: '10/marzo/2025', decision_final: 'SI', comentario: 'Comentario pregunta clave 1', nombre: 'Edgar Lopez'},
-        { id: 2, pregunta_clave : '¿Pregunta Clave 2?', fecha: '25/marzo/2025', decision_final: 'NO', comentario: 'Comentario pregunta clave 2', nombre: 'Sara Herrera'},
-        { id: 3, pregunta_clave : '¿Pregunta Clave 3?', fecha: '17/marzo/2025', decision_final: 'NO', comentario: 'Comentario pregunta clave 3', nombre: 'Guadalupe Perez'},
-        { id: 4, pregunta_clave : '¿Pregunta Clave 4?', fecha: '30/enero/2025', decision_final: 'SI', comentario: 'Comentario pregunta clave 4', nombre: 'Jose Garcia'},
-        { id: 5, pregunta_clave : '¿Pregunta Clave 5?', fecha: '12/enero/2025', decision_final: 'SI', comentario: 'Comentario pregunta clave 5', nombre: 'Pedro Martinez'},
-        { id: 6, pregunta_clave : '¿Pregunta Clave 6?', fecha: '5/febrero/2025', decision_final: 'NO', comentario: 'Comentario pregunta clave 6', nombre: 'Lucia Gomez'},
-        { id: 7, pregunta_clave : '¿Pregunta Clave 7?', fecha: '16/febrero/2025', decision_final: 'SI', comentario: 'Comentario pregunta clave 7', nombre: 'Victor Vazquez'},
-    ]);
+                    const data = await response.json();
+                    console.log('respuesta',data)
+
+                    const formattedQuestions = data.recordset.map((question) => ({
+                        id: question.id,
+                        nombre: question.nombre,
+                        hora_creacion: new Date(question.hora_creacion).toLocaleDateString('es-ES', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          }),
+                        creador: question.creador,
+                        decision: question.decisionFinal,
+                        comentario: question.comentario,
+                        creador_nombre : question.creador_p, 
+                      }));
+                      
+                      setKeyQuestions(formattedQuestions);
+                }catch (error) {
+                    console.error('Error obteniendo los datos', error);
+                }
+            }
+    
+            fetchKeyQuestion();
+        }, []);
+    
+    // const [usuarios] = useState([
+    //     { id: 1, pregunta_clave : '¿Debo entrar al negocio con gobierno?', fecha: '10/marzo/2025', decision_final: 'SI', comentario: 'Comentario pregunta clave 1', nombre: 'Edgar Lopez'},
+    //     { id: 2, pregunta_clave : '¿Pregunta Clave 2?', fecha: '25/marzo/2025', decision_final: 'NO', comentario: 'Comentario pregunta clave 2', nombre: 'Sara Herrera'},
+    //     { id: 3, pregunta_clave : '¿Pregunta Clave 3?', fecha: '17/marzo/2025', decision_final: 'NO', comentario: 'Comentario pregunta clave 3', nombre: 'Guadalupe Perez'},
+    //     { id: 4, pregunta_clave : '¿Pregunta Clave 4?', fecha: '30/enero/2025', decision_final: 'SI', comentario: 'Comentario pregunta clave 4', nombre: 'Jose Garcia'},
+    //     { id: 5, pregunta_clave : '¿Pregunta Clave 5?', fecha: '12/enero/2025', decision_final: 'SI', comentario: 'Comentario pregunta clave 5', nombre: 'Pedro Martinez'},
+    //     { id: 6, pregunta_clave : '¿Pregunta Clave 6?', fecha: '5/febrero/2025', decision_final: 'NO', comentario: 'Comentario pregunta clave 6', nombre: 'Lucia Gomez'},
+    //     { id: 7, pregunta_clave : '¿Pregunta Clave 7?', fecha: '16/febrero/2025', decision_final: 'SI', comentario: 'Comentario pregunta clave 7', nombre: 'Victor Vazquez'},
+    // ]);
 
     if (loading){
         return (
@@ -107,49 +146,50 @@ const Listtheme = () => {
     return (
         
         <div >
-            {/* Navbar with centered options */}
-                        <Navbar bg="primary" variant="dark" expand="lg" className="px-3">
-                            <Container fluid>
-                                <Navbar.Brand className="d-flex align-items-center me-auto"> {/* Changed to me-auto */}
-                                    <img
-                                        src={user.photo}
-                                        alt={user.displayName}
-                                        className="rounded-circle me-2"
-                                        width="40"
-                                        height="40"
-                                        onError={(e) => {
-                                            e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName)}&background=0078d4&color=fff`;
-                                        }}
-                                    />
-                                    <span className="d-none d-sm-inline">{user.displayName}</span>
-                                </Navbar.Brand>
-                                
-                                <Navbar.Toggle aria-controls="main-navbar" />
-                                
-                                <Navbar.Collapse id="main-navbar">
-                                    <Nav className="mx-auto"> {/* Changed to mx-auto to center the nav items */}
-                                        <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/preguntas-clave")}>Preguntas Clave</Nav.Link>
-                                        <Nav.Link as="div" className="nav-link-pointer active" onClick={() => navigate("/temas")}>Temas</Nav.Link>
-                                        <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/enrolamiento")}>Enrolamiento</Nav.Link>
-                                        <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/dashboard")}>Dashboard</Nav.Link>
-                                    </Nav>
-                                    <Button variant="outline-light" className="ms-auto" onClick={handleLogout}>Sign out</Button> {/* Changed to ms-auto */}
-                                </Navbar.Collapse>
-                            </Container>
-                        </Navbar>
+            <Navbar bg="primary" variant="dark" expand="lg" className="px-3">
+                <Container fluid>
+                    <Navbar.Brand className="d-flex align-items-center me-auto"> {/* Changed to me-auto */}
+                        <img
+                            src={user.photo}
+                            alt={user.displayName}
+                            className="rounded-circle me-2"
+                            width="40"
+                            height="40"
+                            onError={(e) => {
+                                e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName)}&background=0078d4&color=fff`;
+                            }}
+                        />
+                        <span className="d-none d-sm-inline">{user.displayName}</span>
+                    </Navbar.Brand>
+                    
+                    <Navbar.Toggle aria-controls="main-navbar" />
+                    
+                    <Navbar.Collapse id="main-navbar">
+                        <Nav className="mx-auto"> {/* Changed to mx-auto to center the nav items */}
+                            {(user.tipoId === '7D532F89-A63E-4667-B7CB-A4B477A55017' || user.tipoId === 'D3B78325-006E-4230-AE7E-C188181AE8B8') && (
+                            <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/preguntas-clave")}>Preguntas Clave</Nav.Link>)}
+                            {(user.tipoId === '84F03A04-2891-4DE7-8A3D-DBD2018EAE47') && (
+                            <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/preguntaClave/pregunta/lista")}>Preguntas Clave</Nav.Link>)}
+                            {(user.tipoId === '7D532F89-A63E-4667-B7CB-A4B477A55017' || user.tipoId === 'D3B78325-006E-4230-AE7E-C188181AE8B8') && (
+                            <Nav.Link as="div" className="nav-link-pointer active" onClick={() => navigate("/temas")}>Temas</Nav.Link>)}
+                            {(user.tipoId === '7D532F89-A63E-4667-B7CB-A4B477A55017') && (
+                            <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/enrolamiento")}>Enrolamiento</Nav.Link>)}
+                            {(user.tipoId === '7D532F89-A63E-4667-B7CB-A4B477A55017' || user.tipoId === 'D3B78325-006E-4230-AE7E-C188181AE8B8') && (
+                            <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/dashboard")}>Dashboard</Nav.Link>)}
+                        </Nav>
+                        <Button variant="outline-light" className="ms-auto" onClick={handleLogout}>Sign out</Button> {/* Changed to ms-auto */}
+                    </Navbar.Collapse>
+                </Container>
+            </Navbar>
         
             <div style={{ padding: '20px', border: '1px solid rgb(178, 176, 176)', borderRadius: '8px', margin: '15px'}}>
             <button style={{ padding: '6px 12px', backgroundColor: '#007BFF',color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer'}}
                         onClick={() => navigate("/preguntas-clave/nuevaPregunta")}>
                         Nueva Pregunta
             </button>
-            <button style={{ marginLeft: '10px', padding: '6px 12px', backgroundColor: '#007BFF',color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer'}}
-                        onClick={() => navigate("/preguntas-clave/reportePreguntas")}>
-                        Reporte de preguntas
-            </button>
                 
                 <DataGrid
-                    dataSource={usuarios}
+                    dataSource={keyQuestions}
                     keyExpr="id"
                     showBorders={true}
                     allowColumnReordering={true}
@@ -177,17 +217,27 @@ const Listtheme = () => {
                     allowUpdating={true}
                     />
                     <Column dataField="id" caption="ID" allowEditing={false} width={50} />
-                    <Column dataField="pregunta_clave" dataType="Pregunta Clave" />
-                    <Column dataField="nombre" caption="Usuario" allowEditing={false} /> 
-                    <Column dataField="fecha" caption="Fecha"/>
+                    <Column dataField="nombre" allowEditing={false} caption='Pregunta Clave' 
+                    cellRender={({ data }) => {
+                        return (
+                          <button
+                            className="btn btn-link p-0"
+                            onClick={() => navigate(`/preguntas-clave/ReportePreguntas/${data.id}`)} // Redirige a la ruta correspondiente
+                          >
+                            {data.nombre}
+                          </button>
+                        );
+                      }}/>
+                    <Column dataField="creador_nombre" caption="Usuario" allowEditing={false} /> 
+                    <Column dataField="hora_creacion" caption="Fecha" allowEditing={false}/>
                     {/* <Column dataField="decision_final" caption="Desición Final"/> */}
                     <Column
-                    dataField="decision_final"
+                    dataField="decision"
                     caption="Decisión Final"
+                    allowEditing={false}
                     cellRender={({ value }) => {
-                        let backgroundColor = '';
-                        if (value === 'SI') backgroundColor = '#4CAF50'; // verde
-                        else if (value === 'NO') backgroundColor = '#F44336'; // rojo
+                        let backgroundColor = value == 1 ? '#4CAF50' : value == 0 ? '#F44336' : '';
+                        let displayText = value == 1 ? 'SI' : value == 0 ? 'NO' : '';
 
                         return (
                         <div style={{
@@ -197,17 +247,25 @@ const Listtheme = () => {
                             borderRadius: '4px',
                             textAlign: 'center'
                         }}>
-                            {value}
+                            {displayText}
                         </div>
                         );
                     }}
                     />
 
-                    <Column dataField="comentario" caption="Comentario"/>
+                    <Column dataField="comentario" caption="Comentario" allowEditing={false}/>
                 </DataGrid>
 
-            </div>
+                <button style={{ padding: '6px 12px', backgroundColor: '#007BFF',color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer',
+                    marginTop: '10px'
+                }}
+                        onClick={() => navigate("/preguntaClave/pregunta/lista")}>
+                        Mis preguntas
+                </button>
 
+            </div>
+            
+            
 
         
         </div>

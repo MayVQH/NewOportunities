@@ -27,6 +27,16 @@ const NewTheme = () => {
                 .toLowerCase();
         };
 
+        const normalizeForDisplay = (str) => {
+            let core = str
+            .replace(/^[¿?]+|[¿?]+$/g, '') // elimina signos si los tiene
+            .trim();
+
+            core = core.charAt(0).toUpperCase() + core.slice(1);
+
+            return `¿${core}?`;
+        };
+
         const normalizedCurrent = cleanQuestion(currentQuestion);
 
         if (questions.some(q => cleanQuestion(q) === normalizedCurrent)) {
@@ -34,7 +44,9 @@ const NewTheme = () => {
             return;
         }
 
-        setQuestions([...questions, currentQuestion.trim()]);
+        const formattedQuestion = normalizeForDisplay(currentQuestion);
+
+        setQuestions([...questions, formattedQuestion]);
         setCurrentQuestion('');
         setError('');
     };

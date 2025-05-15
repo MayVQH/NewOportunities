@@ -25,6 +25,8 @@ loginRouter.get("/microsoft/callback",passport.authenticate("auth-microsoft", {
             `https://ui-avatars.com/api/?name=${encodeURIComponent(req.user.displayName)}&background=0078d4&color=fff`,
         };
 
+        console.log(userData)
+
 
 
         const frontendOrigin = "http://localhost:5000";

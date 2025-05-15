@@ -17,17 +17,6 @@ import { Toast } from 'devextreme-react/toast';
 
 
 
-// const [toastConfig, setToastConfig] = useState<{
-//   isVisible: false,
-//   type: 'info' | 'error' | 'success',
-//   message: ''
-// }>({
-//   isVisible: false,
-//   type: 'info',
-//   message: '',
-// });
-
-
 const onExporting = async (e) => {
   
     const format = e.format;
@@ -279,10 +268,16 @@ const PruebaRoles = () => {
                             
                             <Navbar.Collapse id="main-navbar">
                                 <Nav className="mx-auto"> {/* Changed to mx-auto to center the nav items */}
-                                    <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/preguntas-clave")}>Preguntas Clave</Nav.Link>
-                                    <Nav.Link as="div" className="nav-link-pointer active" onClick={() => navigate("/temas")}>Temas</Nav.Link>
-                                    <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/enrolamiento")}>Enrolamiento</Nav.Link>
-                                    <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/dashboard")}>Dashboard</Nav.Link>
+                                    {(user.tipoId === '7D532F89-A63E-4667-B7CB-A4B477A55017' || user.tipoId === 'D3B78325-006E-4230-AE7E-C188181AE8B8') && (
+                                    <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/preguntas-clave")}>Preguntas Clave</Nav.Link>)}
+                                    {(user.tipoId === '84F03A04-2891-4DE7-8A3D-DBD2018EAE47') && (
+                                    <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/preguntaClave/pregunta/lista")}>Preguntas Clave</Nav.Link>)}
+                                    {(user.tipoId === '7D532F89-A63E-4667-B7CB-A4B477A55017' || user.tipoId === 'D3B78325-006E-4230-AE7E-C188181AE8B8') && (
+                                    <Nav.Link as="div" className="nav-link-pointer active" onClick={() => navigate("/temas")}>Temas</Nav.Link>)}
+                                    {(user.tipoId === '7D532F89-A63E-4667-B7CB-A4B477A55017') && (
+                                    <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/enrolamiento")}>Enrolamiento</Nav.Link>)}
+                                    {(user.tipoId === '7D532F89-A63E-4667-B7CB-A4B477A55017' || user.tipoId === 'D3B78325-006E-4230-AE7E-C188181AE8B8') && (
+                                    <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/dashboard")}>Dashboard</Nav.Link>)}
                                 </Nav>
                                 <Button variant="outline-light" className="ms-auto" onClick={handleLogout}>Sign out</Button> {/* Changed to ms-auto */}
                             </Navbar.Collapse>
@@ -301,26 +296,8 @@ const PruebaRoles = () => {
             columnAutoWidth={true}
             repaintChangesOnly={true}
             onExporting={onExporting}
-            //editing={{ mode: 'row', allowUpdating: true }}
             onRowUpdated={handleRowUpdated}
-            onCellValueChanged={handleCellValueChanged}
-            // onEditorPreparing={(e) => {
-            //   if (["comite", "usuario", "moderador"].includes(e.dataField) && e.parentType === "dataRow") {
-            //     e.editorOptions.onValueChanged = (args) => {
-            //       if (args.value === true) {
-            //         const keys = ["comite", "usuario", "moderador"];
-            //         keys.forEach((key) => {
-            //           if (key !== e.dataField) {
-            //             e.row.data[key] = false;
-            //           }
-            //         });
-            //       }
-          
-            //       // Actualiza el valor actual
-            //       e.setValue(args.value);
-            //     };
-            //   }
-            // }}                   
+            onCellValueChanged={handleCellValueChanged}               
           >
             <GroupPanel visible={true} />
             <HeaderFilter visible={true} />

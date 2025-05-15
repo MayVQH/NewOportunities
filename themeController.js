@@ -1,5 +1,16 @@
 import { getConnection,sql } from "../config/database.js";
 
+
+
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+
+const multer = require('multer');
+
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
+
+
 export const getAllThemes = async (req,res) => {
     try {
         const conn = await getConnection();
@@ -569,4 +580,762 @@ export const createKeyQuestion = async (req, res) => {
     }
 }
 
+
+export const getAllKeyQuestions = async (req,res) => {
+    try {
+        const conn = await getConnection();
+        const result =await conn.request()
+        .query(`SELECT 
+                    p.id,
+                    p.nombre,
+                    p.hora_creacion,
+                    p.creador,
+                    (
+                        SELECT u.Nombre
+                        FROM Usuarios u
+                        WHERE u.Email = p.creador
+                    ) AS creador_p,
+                    p.decisionFinal,
+                    p.comentario                  
+                FROM PreguntasClave p
+                WHERE p.flag = 1
+                ORDER BY p.hora_creacion DESC
+            `);
+            console.log('Temas body',result)
+            res.status(200).json(
+                result
+            );
+    } catch (error) {
+        console.error('Error en la base de datos:', error);
+        res.status(500).json({ 
+            message: 'Error obteniendo Preguntas clave',
+            details: error.message 
+        });
+    }
+};
+
+
+export const updateComentsKeyQuestion = async (req,res) => {
+
+    let transaction;
+    const conn = await getConnection();
+
+    try {
+
+        const { id } = req.params;
+        const { comentario } = req.body;
+
+        console.log('comentario',comentario)
+
+        transaction = new sql.Transaction(conn);
+        await transaction.begin();
+
+        // Update theme name
+        await new sql.Request(transaction)
+            .input('id', sql.UniqueIdentifier, id)
+            .input('comentario', sql.NVarChar, comentario)
+            .query(`
+                UPDATE PreguntasClave
+                SET comentario = @comentario
+                WHERE id = @id
+            `);
+        
+        await transaction.commit();
+
+        res.status(200).json({ message: 'Comentario actualizado correctamente' });
+    } catch (error) {
+        console.error('Error actualizando comentario:', error);
+        res.status(500).json({ error: 'Error al actualizar el comentario' });
+    }
+    };
+
+
+export const getAllKeyQuestionUser = async (req,res) => {
+    try {
+        const {id} = req.params;
+        console.log('id del usuario', id)
+        const conn = await getConnection();
+
+        const usuarios =await conn.request()
+        .input('id',sql.UniqueIdentifier,id)
+        .query(`SELECT pc_id
+                FROM UsuariosPreguntaClave
+                WHERE usuario_id = @id
+            `);
+        
+        console.log('Temas body',usuarios)
+        const pcIds = usuarios.recordset.map(row => `'${row.pc_id}'`).join(',');
+
+        if (pcIds.length == 0){
+            return res.json([]);
+        }
+        
+
+        const result =await conn.request()
+        .query(`SELECT t.id,
+                t.nombre,
+                t.hora_creacion,
+                t.flag,
+                (
+                    SELECT                     
+                    STRING_AGG(p.texto, '|||') WITHIN GROUP (ORDER BY p.hora_creacion)
+                    FROM PreguntasPreguntaClave p
+                    WHERE p.pc_id = t.id
+                ) AS preguntas
+                FROM PreguntasClave t
+                WHERE t.id IN (${pcIds})
+                ORDER BY t.hora_creacion DESC
+            `);
+            console.log('Temas body',result)
+            const KeyQuestionWithQuestions = result.recordset.map(key => ({
+                 ...key,
+                 preguntas: key.preguntas ? key.preguntas.split('|||') : [],
+             }));
+        res.json(KeyQuestionWithQuestions);
+        console.log('resultadoparaobtenerPreguntasClave',KeyQuestionWithQuestions)
+    } catch (error) {
+        console.error('Error en la base de datos:', error);
+        res.status(500).json({ 
+            message: 'Error obteniendo temas',
+            details: error.message 
+        });
+    }
+};
+
+export const getFullKeyQuestionData = async (req,res) => {
+    try {
+        const conn = await getConnection();
+        const {id} = req.params;
+
+        console.log('id de la pregunta clave unica',id)
+        const keyResult =  await conn.request()
+            .input('id', sql.UniqueIdentifier, id)
+            .query('SELECT id, nombre FROM PreguntasClave WHERE id = @id');
+
+        console.log('temas:',keyResult)
+        
+        if (!keyResult.recordset[0]){
+            return res.status(404).json({message: 'Pregunta clave no encontrada'});
+        }
+
+        const questionsResult = await conn.request()
+            .input('pc_id', sql.UniqueIdentifier,id)
+            .query(`
+                    SELECT 
+                        id, 
+                        texto
+                    FROM PreguntasPreguntaClave 
+                    WHERE pc_id = @pc_id
+                    ORDER BY hora_creacion DESC
+                `);
+        
+        console.log('preguntas de la pregunta clave',questionsResult)
+        
+        res.json({
+            id: keyResult.recordset[0].id,
+            nombre: keyResult.recordset[0].nombre,
+            preguntas:questionsResult.recordset
+        });
+
+    }catch (error) {
+        console.error('Error en la base de datos:', error);
+        res.status(500).json({
+            message: 'Error obteniendo los temas',
+            details: error.message
+        });
+    }
+  };
+
+
+  export const getComentsKeyQuestions = async (req,res) => {
+    try {
+        const conn = await getConnection();
+        const {id} = req.params;
+
+        console.log('id de la pregunta clave unica',id)
+
+        const result =await conn.request()
+        .input('id',sql.UniqueIdentifier,id)
+        .query(`SELECT 
+                    p.id,
+                    p.pc_id,
+                    p.pcp_id,
+                    p.texto,
+                    p.hora_creacion,
+                    p.creador,
+                    (
+                        select u.Nombre
+                        FROM Usuarios u
+                        WHERE id = p.creador
+                    ) as NombreUsuario,
+                    p.flag                 
+                FROM ComentariosPreguntasClave p
+                WHERE p.pcp_id = @id
+                ORDER BY p.hora_creacion DESC
+            `);
+            console.log('Temas body',result)
+            res.status(200).json(
+                result
+            );
+    } catch (error) {
+        console.error('Error en la base de datos:', error);
+        res.status(500).json({ 
+            message: 'Error obteniendo comentarios Preguntas clave',
+            details: error.message 
+        });
+    }
+};
+
+export const getComentsKeyQuestionsUser = async (req,res) => {
+    try {
+        const conn = await getConnection();
+        const {id,user} = req.params;
+
+        console.log('id de la pregunta clave unica',id)
+        console.log('id del usuario',user)
+
+        const result =await conn.request()
+        .input('id',sql.UniqueIdentifier,id)
+        .input('user',sql.UniqueIdentifier,user)
+        .query(`SELECT 
+                    p.id,
+                    p.pc_id,
+                    p.pcp_id,
+                    p.texto,
+                    p.hora_creacion,
+                    p.creador,
+                    (
+                        select u.Nombre
+                        FROM Usuarios u
+                        WHERE id = p.creador
+                    ) as NombreUsuario,
+                    p.flag                 
+                FROM ComentariosPreguntasClave p
+                WHERE p.pcp_id = @id and p.creador = @user
+                ORDER BY p.hora_creacion DESC
+            `);
+            console.log('Temas body',result)
+            res.status(200).json(
+                result
+            );
+    } catch (error) {
+        console.error('Error en la base de datos:', error);
+        res.status(500).json({ 
+            message: 'Error obteniendo comentariosPreguntas clave',
+            details: error.message 
+        });
+    }
+};
+
+export const getDocumentsKeyQuestions = async (req,res) => {
+    try {
+        const conn = await getConnection();
+        const {id,user} = req.params;
+
+        console.log('id de la pregunta clave unica',id)
+        console.log('id del usuario',user)
+
+        const result =await conn.request()
+        .input('id',sql.UniqueIdentifier,id)
+        .input('user',sql.UniqueIdentifier,user)
+        .query(`SELECT 
+                    p.id,
+                    p.pc_id,
+                    p.pcp_id,
+                    p.documento,
+                    p.hora_creacion,
+                    p.creador,
+                    (
+                        select u.Nombre
+                        FROM Usuarios u
+                        WHERE id = p.creador
+                    ) as NombreUsuario,
+                    p.flag                 
+                FROM DocumentosPreguntasClave p
+                WHERE p.pcp_id = @id and p.creador = @user
+                ORDER BY p.hora_creacion DESC
+            `);
+            console.log('Temas body',result)
+            res.status(200).json(
+                result
+            );
+    } catch (error) {
+        console.error('Error en la base de datos:', error);
+        res.status(500).json({ 
+            message: 'Error obteniendo comentariosPreguntas clave',
+            details: error.message 
+        });
+    }
+};
+
+export const createNewComment = async (req, res) => {
+    let transaction;
+    const conn = await getConnection();
+
+    try {
+
+        console.log('estamos en esta función de crear el comentario de la pregunta de la pregunta clave')
+        console.log('respuesta obtenida desde el front',req.body)
+
+        const idpreguntaClave = req.body.pc_id
+        const idpregunta = req.body.pcp_id
+        const texto = req.body.texto
+        const creador = req.body.creador
+
+        console.log('preguntaclave',idpreguntaClave)
+        console.log('usuarios',idpregunta)
+        console.log('comentario',texto)
+        console.log('correo',creador)
+
+        if(!idpreguntaClave || !idpregunta || !texto || !creador){
+            return res.status(400).json({message:'Requiere todos los campos'});
+        }
+
+        transaction = new sql.Transaction(conn)
+        await transaction.begin()
+
+        const CommentKeyQuestionResult = await new sql.Request(transaction)
+            .input('idPreguntaClave', sql.UniqueIdentifier, idpreguntaClave)
+            .input('idPregunta', sql.UniqueIdentifier, idpregunta)
+            .input('texto',sql.NVarChar,texto)
+            .input('idcreador', sql.UniqueIdentifier, creador)
+            .query('INSERT INTO ComentariosPreguntasClave (pc_id,pcp_id,texto,creador) VALUES (@idPreguntaClave,@idPregunta,@texto,@idcreador)');
+
+        await transaction.commit();
+    } catch (error) {
+        if (transaction && transaction._begun) {
+            await transaction.rollback();
+        }
+        console.error('Database Error:', error);
+        res.status(500).json({ 
+            message: 'Error al actualizar el comentario',
+            details: error.message
+        });
+    }
+}
+
+
+export const createNewDocument = async (req, res) => {
+    let transaction;
+    const conn = await getConnection();
+    try {
+
+        console.log('estamos en esta función de crear el documento de la pregunta de la pregunta clave')
+        console.log(req.file)
+        console.log('Metadata recibida:', req.body.metadata);
+
+        const metadata = JSON.parse(req.body.metadata);
+        const { pc_id, pcp_id, texto, creador } = metadata;
+        
+               
+        const blobName = req.file.originalname;
+        const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+        await blockBlobClient.upload(req.file.buffer, req.file.size);
+
+        console.log('ID de la pregunta:', pcp_id);
+        console.log('Archivo creado por:', creador);
+
+        transaction = new sql.Transaction(conn)
+        await transaction.begin()
+
+        const DocumentKeyQuestionResult = await new sql.Request(transaction)
+            .input('idPreguntaClave', sql.UniqueIdentifier, pc_id)
+            .input('idPregunta', sql.UniqueIdentifier, pcp_id)
+            .input('texto',sql.NVarChar,texto)
+            .input('idcreador', sql.UniqueIdentifier, creador)
+            .query('INSERT INTO DocumentosPreguntasClave (pc_id,pcp_id,documento,creador) VALUES (@idPreguntaClave,@idPregunta,@texto,@idcreador)');
+
+        await transaction.commit();
+
+        res.send({ mensaje: 'Archivo subido correctamente' });
+
+       
+    } catch (error) {
+        console.error('Database Error:', error);
+        res.status(500).json({ 
+            message: 'Error al actualizar el documento',
+            details: error.message
+        });
+    }
+}
+
+export const getDocumentKeyQuestionsUser = async (req,res) => {
+    try {
+        const conn = await getConnection();
+        const {id,user} = req.params;
+
+        console.log('id de la pregunta clave unica',id)
+        console.log('id del usuario',user)
+
+        const result =await conn.request()
+        .input('id',sql.UniqueIdentifier,id)
+        .input('user',sql.UniqueIdentifier,user)
+        .query(`SELECT 
+                    p.id,
+                    p.pc_id,
+                    p.pcp_id,
+                    p.documento,
+                    p.hora_creacion,
+                    p.creador,
+                    (
+                        select u.Nombre
+                        FROM Usuarios u
+                        WHERE id = p.creador
+                    ) as NombreUsuario,
+                    p.flag                 
+                FROM DocumentosPreguntasClave p
+                WHERE p.pcp_id = @id and p.creador = @user
+                ORDER BY p.hora_creacion DESC
+            `);
+            console.log('Temas body',result)
+            res.status(200).json(
+                result
+            );
+    } catch (error) {
+        console.error('Error en la base de datos:', error);
+        res.status(500).json({ 
+            message: 'Error obteniendo documentos de la Preguntas clave',
+            details: error.message 
+        });
+    }
+};
+
+export const getUrlsKeyQuestions = async (req,res) => {
+    try {
+        const conn = await getConnection();
+        const {id} = req.params;
+
+        console.log('id de la pregunta clave unica',id)
+
+        const result =await conn.request()
+        .input('id',sql.UniqueIdentifier,id)
+        .query(`SELECT 
+                    p.id,
+                    p.pc_id,
+                    p.pcp_id,
+                    p.texto,
+                    p.hora_creacion,
+                    p.creador,
+                    (
+                        select u.Nombre
+                        FROM Usuarios u
+                        WHERE id = p.creador
+                    ) as NombreUsuario,
+                    p.flag                 
+                FROM EnlacesPreguntasClave p
+                WHERE p.pcp_id = @id
+                ORDER BY p.hora_creacion DESC
+            `);
+            console.log('Temas body',result)
+            res.status(200).json(
+                result
+            );
+    } catch (error) {
+        console.error('Error en la base de datos:', error);
+        res.status(500).json({ 
+            message: 'Error obteniendo enlaces de Preguntas clave',
+            details: error.message 
+        });
+    }
+};
+
+export const getUrlsKeyQuestionsUser = async (req,res) => {
+    try {
+        const conn = await getConnection();
+        const {id,user} = req.params;
+
+        console.log('id de la pregunta clave unica',id)
+
+        const result =await conn.request()
+        .input('id',sql.UniqueIdentifier,id)
+        .input('user',sql.UniqueIdentifier,user)
+        .query(`SELECT 
+                    p.id,
+                    p.pc_id,
+                    p.pcp_id,
+                    p.texto,
+                    p.hora_creacion,
+                    p.creador,
+                    (
+                        select u.Nombre
+                        FROM Usuarios u
+                        WHERE id = p.creador
+                    ) as NombreUsuario,
+                    p.flag                 
+                FROM EnlacesPreguntasClave p
+                WHERE p.pcp_id = @id and p.creador = @user
+                ORDER BY p.hora_creacion DESC
+            `);
+            console.log('Temas body',result)
+            res.status(200).json(
+                result
+            );
+    } catch (error) {
+        console.error('Error en la base de datos:', error);
+        res.status(500).json({ 
+            message: 'Error obteniendo enlaces de Preguntas clave',
+            details: error.message 
+        });
+    }
+};
+
+export const createNewUrl = async (req, res) => {
+    let transaction;
+    const conn = await getConnection();
+
+    try {
+
+        console.log('estamos en esta función de crear el comentario de la pregunta de la pregunta clave')
+        console.log('respuesta obtenida desde el front',req.body)
+
+        const idpreguntaClave = req.body.pc_id
+        const idpregunta = req.body.pcp_id
+        const texto = req.body.texto
+        const creador = req.body.creador
+
+        console.log('preguntaclave',idpreguntaClave)
+        console.log('usuarios',idpregunta)
+        console.log('enlace',texto)
+        console.log('correo',creador)
+
+        if(!idpreguntaClave || !idpregunta || !texto || !creador){
+            return res.status(400).json({message:'Requiere todos los campos'});
+        }
+
+        transaction = new sql.Transaction(conn)
+        await transaction.begin()
+
+        const CommentKeyQuestionResult = await new sql.Request(transaction)
+            .input('idPreguntaClave', sql.UniqueIdentifier, idpreguntaClave)
+            .input('idPregunta', sql.UniqueIdentifier, idpregunta)
+            .input('texto',sql.NVarChar,texto)
+            .input('idcreador', sql.UniqueIdentifier, creador)
+            .query('INSERT INTO EnlacesPreguntasClave (pc_id,pcp_id,texto,creador) VALUES (@idPreguntaClave,@idPregunta,@texto,@idcreador)');
+
+        await transaction.commit();
+    } catch (error) {
+        if (transaction && transaction._begun) {
+            await transaction.rollback();
+        }
+        console.error('Database Error:', error);
+        res.status(500).json({ 
+            message: 'Error al actualizar el enlace',
+            details: error.message
+        });
+    }
+}
+
+export const createNewAnswerKeyQuestion = async (req, res) => {
+    let transaction;
+    const conn = await getConnection();
+
+    try {
+
+        console.log('estamos en esta función de crear la respuesta de la pregunta clave')
+        console.log('respuesta obtenida desde el front',req.body)
+
+        const idpreguntaClave = req.body.pc_id
+        const preguntas = req.body.estadosPreguntas
+        const creador = req.body.creador
+
+        console.log('preguntaclave',idpreguntaClave)
+        console.log('preguntas',preguntas)
+        console.log('idUsuario',creador)
+
+        if(!idpreguntaClave || !preguntas || !creador){
+            return res.status(400).json({message:'Requiere todos los campos'});
+        }
+
+        transaction = new sql.Transaction(conn)
+        await transaction.begin()
+
+        for (const pregunta of preguntas) {
+            const { id, activo } = pregunta;
+
+            await new sql.Request(transaction)
+                .input('pc_id', sql.UniqueIdentifier, idpreguntaClave)
+                .input('pcp_id', sql.UniqueIdentifier, id)
+                .input('respuesta', sql.Bit, activo)
+                .input('creador', sql.UniqueIdentifier, creador)
+                .query(`
+                    INSERT INTO RespuestasPreguntasClave (pc_id, pcp_id, respuesta, creador)
+                    VALUES (@pc_id, @pcp_id, @respuesta, @creador)
+                `);
+        }
+
+        await transaction.commit();
+        res.status(200).json({ message: 'Respuestas guardadas correctamente' });
+
+    } catch (error) {
+        if (transaction && transaction._begun) {
+            await transaction.rollback();
+        }
+        console.error('Database Error:', error);
+        res.status(500).json({ 
+            message: 'Error al actualizar el comentario',
+            details: error.message
+        });
+    }
+}
+
+export const getReportKeyQuestions = async (req, res) => {
+    try {
+        const conn = await getConnection();
+        const {id} = req.params;
+
+        console.log('id de la pregunta clave unica',id)
+        const keyResult =  await conn.request()
+            .input('id', sql.UniqueIdentifier, id)
+            .query('SELECT id, nombre FROM PreguntasClave WHERE id = @id');
+
+        console.log('temas:',keyResult)
+        
+        if (!keyResult.recordset[0]){
+            return res.status(404).json({message: 'Pregunta clave no encontrada'});
+        }
+
+        const questionsResult = await conn.request()
+            .input('pc_id', sql.UniqueIdentifier,id)
+            .query(`
+                    SELECT 
+                        id, 
+                        texto
+                    FROM PreguntasPreguntaClave 
+                    WHERE pc_id = @pc_id
+                    ORDER BY hora_creacion DESC
+                `);
+        
+        console.log('preguntas de la pregunta clave',questionsResult)
+        
+        const preguntasConConteo = [];
+        
+        for (const pregunta of questionsResult.recordset) {
+            console.log('pregunta',pregunta)
+
+            console.log('id',pregunta.id)
+            console.log('pregunta', pregunta.texto)
+
+            const countResult = await conn.request()
+                .input('pc_id', sql.UniqueIdentifier,id)
+                .input('pcp_id',sql.UniqueIdentifier,pregunta.id)
+                .query(`
+                        SELECT
+                            pc_id,
+                            pcp_id,
+                            COUNT(CASE WHEN respuesta = 0 THEN 1 END) AS conteo_no,
+                            COUNT(CASE WHEN respuesta = 1 THEN 1 END) AS conteo_si,
+                            COUNT(respuesta) AS conteo_total
+                        FROM
+                            RespuestasPreguntasClave
+                        WHERE pc_id = @pc_id and pcp_id = @pcp_id
+                        GROUP BY
+                            pc_id,
+                            pcp_id;
+                    `);
+            
+            console.log('Resultado del conteo',countResult)
+
+            const conteo = countResult.recordset[0] || { conteo_no: 0, conteo_si: 0,conteo_total : 0 };
+
+            preguntasConConteo.push({
+                id: pregunta.id,
+                texto: pregunta.texto,
+                conteo_si: conteo.conteo_si,
+                conteo_no: conteo.conteo_no,
+                conteo_total : conteo.conteo_total
+            });
+        }
+        
+        res.json({
+            id: keyResult.recordset[0].id,
+            nombre: keyResult.recordset[0].nombre,
+            preguntas:preguntasConConteo
+        });
+
+    }catch (error) {
+        console.error('Error en la base de datos:', error);
+        res.status(500).json({
+            message: 'Error obteniendo los temas',
+            details: error.message
+        });
+    }
+}
+
+export const getFullKeyQuestionDataDetail = async (req,res) => {
+    try {
+        const conn = await getConnection();
+        const {pc_id,pcp_id} = req.params;
+
+        console.log('id de la pregunta clave',pc_id)
+        console.log('id de la pregunta de la pregunta clave',pcp_id)
+        const keyResult =  await conn.request()
+            .input('pc_id', sql.UniqueIdentifier, pc_id)
+            .query('SELECT id, nombre FROM PreguntasClave WHERE id = @pc_id');
+
+        console.log('temas:',keyResult)
+        
+        if (!keyResult.recordset[0]){
+            return res.status(404).json({message: 'Pregunta clave no encontrada'});
+        }
+
+        const keyQuestionResult =  await conn.request()
+            .input('pcp_id', sql.UniqueIdentifier, pcp_id)
+            .query('SELECT id, texto FROM PreguntasPreguntaClave WHERE id = @pcp_id');
+
+        console.log('pregunta de la pregunta clave:',keyQuestionResult)
+
+        const usersResult = await conn.request()
+            .input('pc_id', sql.UniqueIdentifier,pc_id)
+            .query(`
+                    SELECT 
+                        p.usuario_id, 
+                        p.id,
+                        (SELECT u.Nombre
+                            FROM Usuarios u
+                            WHERE id = p.usuario_id
+                        ) as NombreUsuario
+                    FROM UsuariosPreguntaClave p
+                    WHERE p.pc_id = @pc_id 
+                    ORDER BY hora_creacion DESC
+                `);
+        
+        console.log('usuarios de la pregunta clave',usersResult)
+
+        const commentResult = await conn.request()
+            .input('pc_id', sql.UniqueIdentifier,pc_id)
+            .input('pcp_id',sql.UniqueIdentifier,pcp_id)
+            .query(`
+                    SELECT 
+                        p.id,
+                        p.texto,
+                        p.creador,
+                        p.hora_creacion,
+                        (SELECT u.Nombre
+                            FROM Usuarios u
+                            WHERE id = p.creador
+                        ) as NombreUsuario
+                    FROM ComentariosPreguntasClave p
+                    WHERE p.pc_id = @pc_id and p.pcp_id = @pcp_id
+                    ORDER BY hora_creacion DESC
+                `);
+        
+        console.log('usuarios de la pregunta clave',commentResult)
+        
+        res.json({
+            id: keyResult.recordset[0].id,
+            nombre: keyResult.recordset[0].nombre,
+            pcp_id:keyQuestionResult.recordset[0].id,
+            nombre_pc:keyQuestionResult.recordset[0].texto,
+            usuarios:usersResult.recordset,
+            comentarios:commentResult.recordset
+        });
+
+    }catch (error) {
+        console.error('Error en la base de datos:', error);
+        res.status(500).json({
+            message: 'Error obteniendo los temas',
+            details: error.message
+        });
+    }
+  };
 
