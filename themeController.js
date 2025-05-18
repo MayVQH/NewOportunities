@@ -1,5 +1,6 @@
 import { getConnection,sql } from "../config/database.js";
 import { BlobServiceClient } from "@azure/storage-blob";
+// Conexión a Azure Blob
 
 
 import { createRequire } from 'module';
@@ -1482,4 +1483,74 @@ export const FinalCommentKeyQuestion = async (req,res) => {
         });
     }
 };
+
+
+export const obtenerConfiguracion = async (req, res) => {
+   
+    const conn = await getConnection();
+    try {
+        
+        const result = await conn.request()
+        .query('SELECT id,nombre, valor FROM ConfiguracionGlobal');
+
+        const config = {};
+        result.recordset.forEach(row => {
+        config[row.nombre] = row.valor;
+    });
+
+        res.json(config);
+    } catch (error) {
+        console.error('Error al obtener configuración:', error);
+        res.status(500).send('Error al obtener configuración');
+    }
+};
+
+export const guardarConfiguracion = async (req, res) => {
+    let transaction;
+    const conn = await getConnection();
+
+  try {  
+    const {inMin,inMax,docMin,docMax} = req.body 
+    
+    transaction = new sql.Transaction(conn);
+    await transaction.begin();
+
+    await new sql.Request(transaction)
+        .input('inMin', sql.NVarChar, inMin)
+        .query(`
+        UPDATE ConfiguracionGlobal 
+        SET valor = @inMin WHERE nombre = 'inputComentarioMin'
+        `);
+
+    await new sql.Request(transaction)
+        .input('inMax', sql.NVarChar, inMax)
+        .query(`
+        UPDATE ConfiguracionGlobal 
+        SET valor = @inMax WHERE nombre = 'inputComentarioMax'
+    `);
+
+    await new sql.Request(transaction)
+        .input('docMin', sql.NVarChar, docMin)
+        .query(`
+        UPDATE ConfiguracionGlobal 
+        SET valor = @docMin WHERE nombre = 'DocumentoMin'
+        `);
+
+    await new sql.Request(transaction)
+        .input('docMax', sql.NVarChar, docMax)
+        .query(`
+        UPDATE ConfiguracionGlobal 
+        SET valor = @docMax WHERE nombre = 'DocumentoMax'
+    `);
+
+    await transaction.commit();
+    
+
+    res.json({ message: 'Configuración actualizada exitosamente' });
+  } catch (error) {
+    console.error('Error al guardar configuración:', error);
+    res.status(500).send('Error al guardar configuración');
+  }
+};
+
 

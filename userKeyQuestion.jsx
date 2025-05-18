@@ -11,6 +11,14 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
 import { useRef } from 'react';
 
+const hasSymbolAtEdges = (text) => /^[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ]+|[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ]+$/.test(text.trim());
+
+const isOnlySpecialCharsOrNumbers = (text) => {
+    const cleaned = text.trim();
+    const hasLetters = /[a-zA-ZáéíóúÁÉÍÓÚñÑ]/.test(cleaned); // acepta letras con acentos y eñes
+    return !hasLetters;
+};
+
 const UserKeyQuestion = () => {
     const [user, setUser] = useState(null);
     const { id } = useParams();
@@ -34,6 +42,9 @@ const UserKeyQuestion = () => {
     const [preguntaSeleccionada, setPreguntaSeleccionada] = useState(null);
     //const [popupVisible, setPopupVisible] = useState(false);
     const [confirmVisible, setConfirmVisible] = useState(false);
+    const [config, setConfig] = useState({});
+    const [errorMsg, setErrorMsg] = useState('');
+    const [errorComentario, setErrorComentario] = useState('');
     const navigate = useNavigate();
 
     const fileInputRef = useRef(null);
@@ -92,6 +103,38 @@ const UserKeyQuestion = () => {
               fetchThemeData();
           }, [id]);
 
+    useEffect(() => {
+    const fetchConfiguration = async () => {
+        try {
+            const response = await fetch(`http://localhost:3000/api/themes/configuracion`);
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({
+                    message: 'Error desconocido'
+                }));
+                throw new Error(errorData.message || 'La respuesta de la web no fue satisfactoria');
+            }
+            
+            const data = await response.json();
+            console.log('respuesta configuracion',data)
+
+            const configuracion = {
+                inputMin: parseInt(data.inputComentarioMin),
+                inputMax: parseInt(data.inputComentarioMax),
+                docMin: parseInt(data.DocumentoMin),
+                docMax: parseInt(data.DocumentoMax),
+            }
+
+            setConfig(configuracion)
+            
+
+        }catch (error) {
+            console.error('Error obteniendo los datos', error);
+        }
+    }
+
+    fetchConfiguration();
+    }, []);
+
     //   const [preguntas, setPreguntas] = useState([
     //     { id: 1, texto: '¿Pregunta 1?', activo: true },
     //     { id: 2, texto: '¿Pregunta 2?', activo: false },
@@ -142,15 +185,47 @@ const UserKeyQuestion = () => {
       };
 
       const enviarComentario = async () => {
-        if (!comentarioActual.trim()) return;
-      
+        if (!comentarioActual.trim()){
+            setErrorComentario(`El comentario no debe estar vacío`);
+            setTimeout(() => setErrorComentario(''), 4000);
+            return;
+        } 
+
+        if (comentarioActual.length < config.inputMin) {
+            setErrorComentario(`El comentario debe tener al menos ${config.inputMin} caracteres.`);
+            setTimeout(() => setErrorComentario(''), 4000);
+            return;
+        }
+    
+        if (comentarioActual.length > config.inputMax) {
+        setErrorComentario(`El comentario no puede superar los ${config.inputMax} caracteres.`);
+        setTimeout(() => setErrorComentario(''), 4000);
+        return;
+        }
+
+        if (isOnlySpecialCharsOrNumbers(comentarioActual)) {
+            const message = 'El comentario debe contener al menos una letra.';
+            setErrorComentario(message);
+            setTimeout(() => setErrorComentario(''), 4000);
+            return;
+        }
+
+        if (hasSymbolAtEdges(comentarioActual)) {
+            const message = 'El comentario no debe comenzar ni terminar con símbolos.';
+            setErrorComentario(message);
+            setTimeout(() => setErrorComentario(''), 4000);
+            return;
+        }
+
+        setErrorComentario('');
+
         const nuevoComentario = {
           pc_id: keyQuestion.id, 
           pcp_id: preguntaSeleccionada.id,
           texto: comentarioActual,
           creador: user.id
         };
-        
+
         console.log('comentario enviado',nuevoComentario)
         try {
           const res = await fetch('http://localhost:3000/api/themes/comentarios/guardar', {
@@ -226,6 +301,28 @@ const UserKeyQuestion = () => {
 
         const uploadfile = async () => {
             const file = fileInputRef.current?.files[0];
+
+            if (!file) {
+                setErrorMsg("No se seleccionó ningún archivo.");
+                setTimeout(() => setErrorMsg(''), 4000);
+                return;
+              }
+            
+            const fileSizeKB = file.size / 1024;
+            const fileSizeMB = file.size / (1024 * 1024);
+
+            if (fileSizeKB < config.docMin) {
+                setErrorMsg(`El archivo es demasiado pequeño. Debe ser al menos ${config.docMin} KB.`);
+                setTimeout(() => setErrorMsg(''), 4000);
+                return;
+            }
+        
+            if (fileSizeMB > config.docMax) {
+                setErrorMsg(`El archivo es demasiado grande. El límite es ${config.docMax} MB.`);
+                setTimeout(() => setErrorMsg(''), 4000);
+                return;
+            }
+
             const formdata = new FormData();
 
             formdata.append('archivo',file);
@@ -450,6 +547,11 @@ const UserKeyQuestion = () => {
                 >
                 <div>
                     <label className="fw-bold mb-2">Bitácora de comentarios</label>
+                    {errorComentario && (
+                        <div className="alert alert-danger mt-2" role="alert">
+                            {errorComentario}
+                        </div>
+                    )}
                     <textarea
                     value={comentarioActual}
                     onChange={(e) => setComentarioActual(e.target.value)}
@@ -458,6 +560,9 @@ const UserKeyQuestion = () => {
                     placeholder="Escribe tu comentario aquí..."
                     id="inputComentario"
                     />
+                    <small className="text-muted">
+                        {comentarioActual.length} / {config.inMax} caracteres
+                    </small>
 
                     <Button
                     text="Enviar comentario"
@@ -492,10 +597,16 @@ const UserKeyQuestion = () => {
                 >
                 <div className="d-flex flex-column mt-4 px-4">
                     <label className="fw-bold mb-2">Bitácora de Documentos</label>
+                    {errorMsg && (
+                    <div className="alert alert-danger mt-2" role="alert">
+                        {errorMsg}
+                    </div>
+                    )}
                     <input 
                     type="file"
                     ref={fileInputRef}
                     className="form-control mb-2"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,image/*,.txt"
                     />
 
                     <Button

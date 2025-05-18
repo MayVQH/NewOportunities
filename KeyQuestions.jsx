@@ -316,26 +316,7 @@ const Keyquestion = () => {
 
         console.log('respuesta enviada',payload)
 
-        setShowConfirmation(true);
-
-        // try {
-        //     const response = await fetch('http://localhost:3000/api/themes/crear/preguntaClave', {
-        //         method: 'POST',
-        //         headers: {
-        //             'Content-Type': 'application/json'
-        //         },
-        //         body: JSON.stringify(payload)
-        //     });
-    
-        //     if (!response.ok) {
-        //         throw new Error('Error al guardar los datos');
-        //     }
-    
-        //     showValidationPopup('Datos guardados exitosamente.');
-        // } catch (error) {
-        //     console.error(error);
-        //     showValidationPopup('Error al guardar los datos.');
-        // }     
+        setShowConfirmation(true);   
         
     };
 
