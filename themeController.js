@@ -1,5 +1,5 @@
 import { getConnection,sql } from "../config/database.js";
-
+import { BlobServiceClient } from "@azure/storage-blob";
 
 
 import { createRequire } from 'module';
@@ -496,11 +496,13 @@ export const createKeyQuestion = async (req, res) => {
         const usuarios = req.body.usuarios
         const preguntaTema = req.body.preguntasPorTema
         const userEmail = req.body.creador
+        const usuarioElegido = req.body.usuarioElegido
 
         console.log('preguntaclave',preguntaClave)
         console.log('usuarios',usuarios)
         console.log('temas y preguntas',preguntaTema)
         console.log('correo',userEmail)
+        console.log('usuario elegido',usuarioElegido)
 
         if(!preguntaClave || !usuarios || !preguntaTema){
             return res.status(400).json({message:'Requiere todos los campos de nombre, usuarios y preguntas'});
@@ -525,10 +527,14 @@ export const createKeyQuestion = async (req, res) => {
         transaction = new sql.Transaction(conn)
         await transaction.begin()
 
+        const estado = 'Pendiente'
+
         const KeyQuestionResult = await new sql.Request(transaction)
             .input('nombre', sql.NVarChar, preguntaClave)
             .input('correo',sql.NVarChar,userEmail)
-            .query('INSERT INTO PreguntasClave (nombre,creador) OUTPUT inserted.id VALUES (@nombre,@correo)');
+            .input('estado',sql.NVarChar,estado)
+            .input('elegido',sql.NVarChar,usuarioElegido)
+            .query('INSERT INTO PreguntasClave (nombre,creador,estado,usuarioElegido) OUTPUT inserted.id VALUES (@nombre,@correo,@estado,@elegido)');
 
         console.log('fila agregada',KeyQuestionResult)
         
@@ -568,13 +574,30 @@ export const createKeyQuestion = async (req, res) => {
             }            
         }
         await transaction.commit();
+
+        const completeTheme = await conn.request()
+            .input('id', sql.UniqueIdentifier, KeyQuestionid)
+            .query(`
+                SELECT t.id, t.nombre, t.hora_creacion,t.estado
+                FROM PreguntasClave t
+                WHERE t.id = @id 
+                GROUP BY t.id, t.nombre, t.hora_creacion,t.estado
+            `);
+        
+            if (!completeTheme.recordset[0]) {
+                throw new Error('No se pudo recuperar el tema creado');
+            }
+
+        res.status(201).json({
+            ...completeTheme.recordset[0]
+        });
     } catch (error) {
         if (transaction && transaction._begun) {
             await transaction.rollback();
         }
         console.error('Database Error:', error);
         res.status(500).json({ 
-            message: 'Error al actualizar el usuario',
+            message: 'Error al crear la pregunta clave',
             details: error.message
         });
     }
@@ -596,7 +619,9 @@ export const getAllKeyQuestions = async (req,res) => {
                         WHERE u.Email = p.creador
                     ) AS creador_p,
                     p.decisionFinal,
-                    p.comentario                  
+                    p.comentario,
+                    p.comentarioFinal,
+                    p.estado               
                 FROM PreguntasClave p
                 WHERE p.flag = 1
                 ORDER BY p.hora_creacion DESC
@@ -683,7 +708,7 @@ export const getAllKeyQuestionUser = async (req,res) => {
                     WHERE p.pc_id = t.id
                 ) AS preguntas
                 FROM PreguntasClave t
-                WHERE t.id IN (${pcIds})
+                WHERE t.id IN (${pcIds}) AND t.estado = 'Pendiente'
                 ORDER BY t.hora_creacion DESC
             `);
             console.log('Temas body',result)
@@ -852,7 +877,7 @@ export const getDocumentsKeyQuestions = async (req,res) => {
                     ) as NombreUsuario,
                     p.flag                 
                 FROM DocumentosPreguntasClave p
-                WHERE p.pcp_id = @id and p.creador = @user
+                WHERE p.pcp_id = @id 
                 ORDER BY p.hora_creacion DESC
             `);
             console.log('Temas body',result)
@@ -862,7 +887,7 @@ export const getDocumentsKeyQuestions = async (req,res) => {
     } catch (error) {
         console.error('Error en la base de datos:', error);
         res.status(500).json({ 
-            message: 'Error obteniendo comentariosPreguntas clave',
+            message: 'Error obteniendo documentos de Preguntas clave',
             details: error.message 
         });
     }
@@ -1178,6 +1203,45 @@ export const createNewAnswerKeyQuestion = async (req, res) => {
     }
 }
 
+export const getAnswerKeyQuestionsUser = async (req,res) => {
+    try {
+        const conn = await getConnection();
+        const {id} = req.params;
+
+        console.log('id de la pregunta clave unica',id)
+
+        const result =await conn.request()
+        .input('id',sql.UniqueIdentifier,id)
+        .query(`SELECT 
+                    p.id,
+                    p.pc_id,
+                    p.pcp_id,
+                    p.respuesta,
+                    p.hora_creacion,
+                    p.creador,
+                    (
+                        select u.Nombre
+                        FROM Usuarios u
+                        WHERE id = p.creador
+                    ) as NombreUsuario,
+                    p.flag                 
+                FROM RespuestasPreguntasClave p
+                WHERE p.pcp_id = @id
+                ORDER BY p.hora_creacion DESC
+            `);
+            console.log('Temas body',result)
+            res.status(200).json(
+                result
+            );
+    } catch (error) {
+        console.error('Error en la base de datos:', error);
+        res.status(500).json({ 
+            message: 'Error obteniendo respuestas de la Preguntas clave',
+            details: error.message 
+        });
+    }
+};
+
 export const getReportKeyQuestions = async (req, res) => {
     try {
         const conn = await getConnection();
@@ -1186,7 +1250,7 @@ export const getReportKeyQuestions = async (req, res) => {
         console.log('id de la pregunta clave unica',id)
         const keyResult =  await conn.request()
             .input('id', sql.UniqueIdentifier, id)
-            .query('SELECT id, nombre FROM PreguntasClave WHERE id = @id');
+            .query('SELECT id, nombre,usuarioElegido,estado FROM PreguntasClave WHERE id = @id');
 
         console.log('temas:',keyResult)
         
@@ -1249,13 +1313,15 @@ export const getReportKeyQuestions = async (req, res) => {
         res.json({
             id: keyResult.recordset[0].id,
             nombre: keyResult.recordset[0].nombre,
+            elegido:keyResult.recordset[0].usuarioElegido,
+            estado : keyResult.recordset[0].estado,
             preguntas:preguntasConConteo
         });
 
     }catch (error) {
         console.error('Error en la base de datos:', error);
         res.status(500).json({
-            message: 'Error obteniendo los temas',
+            message: 'Error obteniendo las preguntas clave y su reporte',
             details: error.message
         });
     }
@@ -1338,4 +1404,82 @@ export const getFullKeyQuestionDataDetail = async (req,res) => {
         });
     }
   };
+
+export const changeFinalChoose = async (req,res) => {
+
+    let transaction;
+    const conn = await getConnection();
+
+    try {
+        const {id} = req.params;
+        const {decision,comentario,pc_id} = req.body;
+
+        const decide = req.body.decisionFinal;
+
+        console.log('id de la pregunta clave',id)
+        console.log('la decision fue',decide)
+        console.log('el comentario',comentario)
+        console.log('id pregunta c',pc_id)
+
+        transaction = new sql.Transaction(conn);
+        await transaction.begin();
+
+        await new sql.Request(transaction)
+        .input('id',sql.UniqueIdentifier,id)
+        .input('decision',sql.Bit,decide)
+        .input('comentario',sql.NVarChar,comentario)
+        .query(`
+               UPDATE PreguntasClave
+                SET comentario = @comentario, decisionFinal = @decision, estado = 'Finalizado'
+                WHERE id = @id
+            `);
+        
+        await transaction.commit();
+
+        res.status(200).json({ message: 'Pregunta clave actualizada correctamente' });
+    } catch (error) {
+        console.error('Error en la base de datos:', error);
+        res.status(500).json({ 
+            message: 'Error actualizando la Preguntas clave',
+            details: error.message 
+        });
+    }
+};
+
+export const FinalCommentKeyQuestion = async (req,res) => {
+
+    let transaction;
+    const conn = await getConnection();
+
+    try {
+        const {id} = req.params;
+        const {comentario,pc_id} = req.body;
+
+        console.log('id de la pregunta clave',id)
+        console.log('el comentario',comentario)
+        console.log('id pregunta c',pc_id)
+
+        transaction = new sql.Transaction(conn);
+        await transaction.begin();
+
+        await new sql.Request(transaction)
+        .input('id',sql.UniqueIdentifier,id)
+        .input('comentario',sql.NVarChar,comentario)
+        .query(`
+               UPDATE PreguntasClave
+                SET comentarioFinal = @comentario
+                WHERE id = @id
+            `);
+        
+        await transaction.commit();
+
+        res.status(200).json({ message: 'Pregunta clave y comentario final actualizada correctamente' });
+    } catch (error) {
+        console.error('Error en la base de datos:', error);
+        res.status(500).json({ 
+            message: 'Error actualizando el comentario final de la Preguntas clave',
+            details: error.message 
+        });
+    }
+};
 
