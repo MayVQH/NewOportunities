@@ -114,6 +114,8 @@ const Listtheme = () => {
                         decision: question.decisionFinal,
                         comentario: question.comentario,
                         creador_nombre : question.creador_p, 
+                        comentarioFinal : question.comentarioFinal,
+                        estatus : question.estado
                       }));
                       
                       setKeyQuestions(formattedQuestions);
@@ -254,6 +256,8 @@ const Listtheme = () => {
                     />
 
                     <Column dataField="comentario" caption="Comentario" allowEditing={false}/>
+                    <Column dataField="estatus" caption="Estatus Pregunta" allowEditing={false}/>
+                    <Column dataField="comentarioFinal" caption="Comentario Final" allowEditing={false}/>
                 </DataGrid>
 
                 <button style={{ padding: '6px 12px', backgroundColor: '#007BFF',color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer',

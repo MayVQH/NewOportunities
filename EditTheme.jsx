@@ -3,6 +3,30 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Container, Row, Col, Card, Form, Button, ListGroup, Spinner, Alert, Modal } from "react-bootstrap";
 import 'bootstrap/dist/css/bootstrap.min.css';
 
+const normalizeText = (text) => {
+    return text
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$/g, "")
+        .trim()
+        .toLowerCase();
+};
+
+const normalizeForDisplay = (str) => {
+    let core = str.replace(/^[¿?]+|[¿?]+$/g, '').trim();
+    core = core.charAt(0).toUpperCase() + core.slice(1);
+    return `¿${core}?`;
+};
+
+const hasSymbolAtEdges = (text) => /^[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ]+|[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ]+$/.test(text.trim());
+
+const isOnlySpecialCharsOrNumbers = (text) => {
+    const cleaned = text.trim();
+    const hasLetters = /[a-zA-ZáéíóúÁÉÍÓÚñÑ]/.test(cleaned); // acepta letras con acentos y eñes
+    return !hasLetters;
+};
+
+
 const EditTheme = () => {
     const navigate = useNavigate();
     const { id } = useParams();
@@ -15,6 +39,7 @@ const EditTheme = () => {
         inactiveQuestions: []
     });
     const [newQuestion, setNewQuestion] = useState('');
+    const [editingQuestions, setEditingQuestions] = useState({});
 
     useEffect(() => {
         const fetchThemeData = async () => {
@@ -47,11 +72,33 @@ const EditTheme = () => {
             return;
         }
 
+        const normalizedInput = normalizeText(newQuestion);
+        const allQuestions = [...theme.activeQuestions, ...theme.inactiveQuestions];
+        const isDuplicate = allQuestions.some(q => normalizeText(q.text) === normalizedInput);
+
+        if (isDuplicate) {
+            setError('Esta pregunta ya existe en el tema');
+            return;
+        }
+
+        if (isOnlySpecialCharsOrNumbers(newQuestion)) {
+            setError('La pregunta debe contener al menos una letra.');
+            return;
+        }
+
+        if (hasSymbolAtEdges(newQuestion)) {
+            setError('La pregunta no debe comenzar ni terminar con símbolos.');
+            return;
+        }
+
+
+        const formatted = normalizeForDisplay(newQuestion);
+
         setTheme(prev => ({
             ...prev,
             activeQuestions: [
                 ...prev.activeQuestions,
-                {id: `temp-${Date.now()}`, text: newQuestion.trim()}
+                {id: `temp-${Date.now()}`, text: formatted}
             ]
         }));
         setNewQuestion('');
@@ -86,22 +133,97 @@ const EditTheme = () => {
 
         const input = document.getElementById('editq'+questionId) ;
         input.disabled = false
+
+        if (!editingQuestions[questionId]) {
+            const original = theme.activeQuestions.find(q => q.id === questionId)?.text || '';
+            setEditingQuestions(prev => ({
+                ...prev,
+                [questionId]: original
+            }));
+        }
     };
 
     const handleChange = (id, newValue) => {
+        // if (!newValue.trim()) {
+        //     setError('La pregunta no puede estar vacía');
+        //     return;
+        // }
+
+        const normalizedInput = normalizeText(newValue);
+
+        // if (isOnlySpecialCharsOrNumbers(normalizedInput)) {
+        //     setError('La pregunta debe contener al menos una letra.');
+        //     return;
+        // }
+
+        // if (hasSymbolAtEdges(normalizedInput)) {
+        //     setError('La pregunta no debe comenzar ni terminar con símbolos.');
+        //     return;
+        // }
+
+        //const formatted = normalizeForDisplay(newValue);
+
         const actualizadas = theme.activeQuestions.find(a => a.id == id);
-        actualizadas.text = newValue;
+        actualizadas.text = normalizedInput;
         //console.log('pregunta activada',theme.activeQuestions)
       };
 
+    const handleCancelEdit = (questionId) => {
+    const original = editingQuestions[questionId];
+    if (original !== undefined) {
+        // Revertir en el DOM
+        const input = document.getElementById('editq' + questionId);
+        input.value = original;
+        input.disabled = true;
+
+        // Restaurar en estado
+        setTheme(prev => ({
+            ...prev,
+            activeQuestions: prev.activeQuestions.map(q =>
+                q.id === questionId ? { ...q, text: original } : q
+            )
+        }));
+
+        setEditingQuestions(prev => {
+            const newEdits = { ...prev };
+            delete newEdits[questionId];
+            return newEdits;
+        });
+    }
+    };
+
     const handleSubmit = async () => {
+        const validatedQuestions = [];
+
+        for (let q of theme.activeQuestions) {
+            const original = q.text.trim();
+
+            if (!original) {
+                setError('Hay preguntas vacías. Verifica antes de guardar.');
+                return
+            }
+
+            if (hasSymbolAtEdges(original)) {
+                setError(`La pregunta "${original}" tiene símbolos al inicio o final.`);
+                return
+            }
+
+            if (isOnlySpecialCharsOrNumbers(original)) {
+                setError(`La pregunta "${original}" debe contener al menos una letra.`);
+                return
+            }
+
+            const formatted = normalizeForDisplay(original);
+            validatedQuestions.push({ ...q, text: formatted });
+        }
+
         try {
             const response = await fetch(`http://localhost:3000/api/themes/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     nombre: theme.name,
-                    activeQuestions: theme.activeQuestions,
+                    activeQuestions: validatedQuestions,
                     inactiveQuestions: theme.inactiveQuestions
                 })
             });
@@ -165,14 +287,25 @@ const EditTheme = () => {
                                             <input type="text" id={`editq${question.id}`} defaultValue={question.text} 
                                             onChange={(e) => handleChange(question.id, e.target.value)} disabled/>
                                             <div>
-                                                <Button 
-                                                    variant="outline-warning" 
-                                                    size="sm" 
+                                            {editingQuestions[question.id] ? (
+                                                <Button
+                                                    variant="outline-secondary"
+                                                    size="sm"
+                                                    className="me-2"
+                                                    onClick={() => handleCancelEdit(question.id)}
+                                                >
+                                                    <i className="bi bi-x-circle"></i>
+                                                </Button>
+                                            ) : (
+                                                <Button
+                                                    variant="outline-warning"
+                                                    size="sm"
                                                     className="me-2"
                                                     onClick={() => handleEditQuestion(question.id)}
                                                 >
-                                                <i className="bi bi-pencil"/>
+                                                    <i className="bi bi-pencil"></i>
                                                 </Button>
+                                            )}
                                                 <Button 
                                                     variant="outline-danger" 
                                                     size="sm"

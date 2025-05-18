@@ -4,7 +4,7 @@ import DataGrid, { Column, Export, Editing, SearchPanel,HeaderFilter, GroupPanel
 import 'devextreme/dist/css/dx.light.css';
 import "../Styles/Dashboard.css"
 import MiniPieChart from './PieChart';
-import { Navbar, Nav, Button, Spinner, Container, Row, Col } from "react-bootstrap";
+import { Navbar, Nav, Button, Spinner, Container, Row, Col,Modal } from "react-bootstrap";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
 import Popup from 'devextreme-react/popup';
@@ -25,13 +25,20 @@ const Reportquestion = () => {
     const [preguntaSeleccionada, setPreguntaSeleccionada] = useState(null);
     const [comentarios, setComentarios] = useState([]);
     const [showPopupUrl, setShowPopupUrl] = useState(false);
+    const [showPopupDoc, setShowPopupDoc] = useState(false);
     const [enlaces, setEnlaces] = useState([]);
+    const [documentos, setDocumentos] = useState([]);
+    const [comentarioFinal, setComentarioFinal] = useState('');
+    const [showConfirmation, setShowConfirmation] = useState(false);
+    const [showSuccess, setShowSuccess] = useState(false);
+    const [showValidationMessage, setShowValidationMessage] = useState(false);
+    const [toastMessage,setToastMessage] = useState("");
     const navigate = useNavigate();
 
     const [isSwitchOn, setIsSwitchOn] = useState(false); // Estado para el switch
 
-    const handleSwitchChange = () => {
-        setIsSwitchOn(!isSwitchOn); // Cambiar el estado del switch
+    const handleSwitchChange = (event) => {
+        setIsSwitchOn(event.target.checked); // Cambiar el estado del switch
     };
 
     useEffect(() => {
@@ -71,7 +78,9 @@ const Reportquestion = () => {
                     console.log('respuesta obtenida de preguntas claves',KeyQuestionData)
                     setKeyQuestion({
                         name: KeyQuestionData.nombre,
-                        id: KeyQuestionData.id
+                        id: KeyQuestionData.id,
+                        elegido: KeyQuestionData.elegido,
+                        estado:KeyQuestionData.estado
                     });
 
                     setPregunta({
@@ -81,6 +90,8 @@ const Reportquestion = () => {
                     console.log('Nombre de la pregunta clave',KeyQuestionData.nombre)
                     console.log('id de la prregunta clave',KeyQuestionData.id)
                     console.log('Preguntas de la pregunta clave',KeyQuestionData.preguntas)
+                    console.log('nombre de la persona elegida',KeyQuestionData.elegido)
+                    console.log('el estado de la pregunta es',KeyQuestionData.estado)
                 } catch (error) {
                     console.error('Error:', error);
                     setLoading(false);
@@ -150,14 +161,14 @@ const Reportquestion = () => {
 
         const abrirPopupDocumento = async (pregunta) => {
             setPreguntaSeleccionada(pregunta);
-            setShowPopupUrl(true);
+            setShowPopupDoc(true);
             
             try {
                 const res = await fetch(`http://localhost:3000/api/themes/preguntasClave/documentos/${pregunta.id_pcp}`);
                 const data = await res.json();
-                setEnlaces(data);
+                setDocumentos(data);
             } catch (err) {
-                console.error('Error al obtener los enlaces:', err);
+                console.error('Error al obtener los documentos:', err);
             }
             };
 
@@ -165,6 +176,166 @@ const Reportquestion = () => {
             console.log('Ir al detalle:', item.id_pcp, keyQuestion.id); 
             navigate(`/detalle/preguntaClave/${item.id_pcp}/${keyQuestion.id}`)
         }
+
+        const handleComentarioChange = (event) => {
+            setComentarioFinal(event.target.value);
+        };
+
+        const showValidationPopup = (message) => {
+            setToastMessage(message);
+            setShowValidationMessage(true);
+            setTimeout(() => {
+                setShowValidationMessage(false);
+            }, 3000);
+            console.log(toastMessage)
+        };
+
+        const puedeEditar = keyQuestion?.elegido === user.displayName;
+
+        const handleSubmit  = async () => {
+            try {
+                const payload = {
+                    decisionFinal: !isSwitchOn,
+                    comentario: comentarioFinal,
+                    pc_id: keyQuestion.id
+                };
+
+                console.log('respuesta que se envia al backend',payload)
+
+                const normalizeText = (text) => {
+                    return text
+                        .normalize("NFD")                          // Quita acentos
+                        .replace(/[\u0300-\u036f]/g, "")           // Remueve marcas diacríticas
+                        .replace(/^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$/g, "") // Elimina símbolos al inicio y fin
+                        .trim()
+                        .toLowerCase();                            // Convierte a minúsculas
+                };
+            
+                const hasSymbolAtEdges = (text) => /^[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ]+|[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ]+$/.test(text.trim());
+            
+                const isOnlySpecialCharsOrNumbers = (text) => {
+                    const cleaned = text.trim();
+                    const hasLetters = /[a-zA-ZáéíóúÁÉÍÓÚñÑ]/.test(cleaned); // acepta letras con acentos y eñes
+                    return !hasLetters;
+                };
+
+                const formatTitle = (text) => {
+                    const cleaned = text.trim().toLowerCase();
+                    return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+                };
+
+                if (!comentarioFinal.trim()) {
+                    const message = 'El comentario no debe estar vacío'
+                    showValidationPopup(message);
+                    return
+                }
+        
+                if (isOnlySpecialCharsOrNumbers(comentarioFinal)) {
+                    const message = 'El comentario debe contener al menos una letra'
+                    showValidationPopup(message);
+                    return
+                }
+        
+                if (hasSymbolAtEdges(comentarioFinal)) {
+                    const message = 'El comentario no debe iniciar o terminar con símbolos'
+                    showValidationPopup(message);
+                    return
+                }
+
+                const formattedQuestion = formatTitle(normalizeText(comentarioFinal))
+                setComentarioFinal(formattedQuestion)
+
+
+        
+                // const response = await fetch('http://localhost:3000/api/themes/preguntaClave/decisionFinal', {
+                //     method: 'POST',
+                //     headers: { 'Content-Type': 'application/json' },
+                //     body: JSON.stringify(payload)
+                // });
+        
+                // if (!response.ok) {
+                //     throw new Error('Error al guardar la decisión');
+                // }
+        
+                // alert('Decisión guardada con éxito');
+
+                setShowConfirmation(true);
+            } catch (error) {
+                console.error('Error al guardar decisión:', error);
+                alert('Error al guardar decisión');
+            }
+        };
+
+        const confirmSubmit = async () => {
+            setShowConfirmation(false);
+
+            const payload = {
+                decisionFinal: !isSwitchOn,
+                comentario: comentarioFinal,
+                pc_id: keyQuestion.id
+            };
+    
+            try {
+                const response = await fetch(`http://localhost:3000/api/themes/preguntaClave/guardar/respuestaFinal/${keyQuestion.id}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(
+                        payload
+                    )
+                });
+    
+                const data = await response.json();
+    
+                if (!response.ok) {
+                    throw new Error(data.message || 'Error al actualizar la pregunta clave');
+                }
+    
+                setShowSuccess(true);
+                setTimeout(() => navigate('/preguntas-clave'), 2000);
+            } catch (error) {
+                console.error('Submission error:', error);
+            }
+        };
+    
+        const cancelSubmit = () => {
+            setShowConfirmation(false);
+        };
+
+        const handleEnviarComentarioFinal = async () => {
+            setShowConfirmation(false);
+
+            const payload = {
+                comentario: comentarioFinal,
+                pc_id: keyQuestion.id
+            };
+    
+            try {
+                const response = await fetch(`http://localhost:3000/api/themes/preguntaClave/guardar/comentarioFinal/${keyQuestion.id}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(
+                        payload
+                    )
+                });
+    
+                const data = await response.json();
+    
+                if (!response.ok) {
+                    throw new Error(data.message || 'Error al actualizar el comentario final de la pregunta clave');
+                }
+    
+                setShowSuccess(true);
+                setTimeout(() => navigate('/preguntas-clave'), 2000);
+            } catch (error) {
+                console.error('Submission error:', error);
+            }
+        };
+    
+        
     
 
     return (
@@ -306,7 +477,10 @@ const Reportquestion = () => {
                     ))}
                 </div>
 
+                
+
                 {/* Seccion de desición final */}
+                {keyQuestion.estado != 'Finalizado' ? (
                 <div style={{ width: '95%', margin: '0 auto', marginTop: '20px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap', marginBottom: '10px'}}>
                         {/* Título y switch */}
@@ -321,6 +495,7 @@ const Reportquestion = () => {
                                 id="switchCheckDefault"
                                 checked={isSwitchOn}
                                 onChange={handleSwitchChange}
+                                disabled={!puedeEditar}
                                 />
                             </div>
                             <span>No</span>
@@ -333,6 +508,9 @@ const Reportquestion = () => {
                                 id="comentarioInput"
                                 type="text"
                                 placeholder="Escribe un comentario"
+                                value={comentarioFinal}
+                                onChange={handleComentarioChange}
+                                disabled={!puedeEditar}
                                 style={{
                                 padding: '6px 8px',
                                 borderRadius: '4px',
@@ -340,7 +518,10 @@ const Reportquestion = () => {
                                 width: '400px'
                                 }}
                             />
-                            <button style={{
+                            <button 
+                            onClick={handleSubmit}
+                            disabled={!puedeEditar}
+                            style={{
                                 marginLeft: '10rem',
                                 padding: '6px 12px',
                                 backgroundColor: '#007BFF',
@@ -349,11 +530,47 @@ const Reportquestion = () => {
                                 borderRadius: '4px',
                                 cursor: 'pointer'
                             }}>
-                                Guardar
+                                Guardar Respuesta Final
                             </button>
                         </div>
                     </div>
-                </div>
+                </div> ) : ( 
+                    <div style={{ width: '95%', margin: '0 auto', marginTop: '20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <label htmlFor="comentarioInput" style={{ margin: 0 }}>Comentario Posterior</label>
+                        <input
+                          id="comentarioInput"
+                          type="text"
+                          placeholder="Escribe un comentario"
+                          value={comentarioFinal}
+                          onChange={handleComentarioChange}
+                          style={{
+                            padding: '6px 8px',
+                            borderRadius: '4px',
+                            border: '1px solid #ccc',
+                            width: '400px'
+                          }}
+                        />
+                        <button 
+                          onClick={handleEnviarComentarioFinal}
+                          style={{
+                            marginLeft: '10rem',
+                            padding: '6px 12px',
+                            backgroundColor: '#28a745',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Enviar Comentario Posterior
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                )}
 
             </div>
             <Popup
@@ -408,6 +625,99 @@ const Reportquestion = () => {
                     </DataGrid>
                 </div>
             </Popup>
+
+            <Popup
+                visible={showPopupDoc}
+                onHiding={() => setShowPopupDoc(false)}
+                dragEnabled
+                closeOnOutsideClick
+                showCloseButton
+                title={preguntaSeleccionada?.texto || "Documento"}
+                width={700}
+                height={600}
+                >
+                <div>
+                    <label className="fw-bold mb-2">Bitácora de documentos</label>
+
+                    <DataGrid
+                    dataSource={documentos.recordset}
+                    keyExpr="id"
+                    showBorders={true}
+                    height={300}
+                    >
+                    <Column dataField="id" caption="ID" width={100} />
+                    <Column dataField="NombreUsuario" caption="Creador" width={150} />
+                    <Column dataField="documento" caption="Documento" />
+                    <Column dataField="hora_creacion" caption="Fecha" dataType="datetime" width={180} />
+                    </DataGrid>
+                </div>
+            </Popup>
+
+            {showValidationMessage && (
+                <div className="position-fixed top-0 end-0 p-3" style={{ zIndex: 9999 }}>
+                    <div className="toast align-items-center text-white bg-danger border-0 show">
+                        <div className="d-flex">
+                            <div className="toast-body">
+                                    {toastMessage}
+                            </div>
+                        </div>
+                    </div> 
+                    </div>
+             )}
+
+            {/* Confirmation Modal */}
+            {keyQuestion.estado != 'Finalizado' ? (
+            <Modal show={showConfirmation} onHide={cancelSubmit} centered>
+                <Modal.Header closeButton>
+                    <Modal.Title>Respuesta Final de la Pregunta Clave</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <p><strong>Pregunta Clave:</strong> {keyQuestion.name}</p>
+                    <p><strong>Respuesta:</strong> {!isSwitchOn ? 'Sí' : 'No'}</p>
+                    
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={cancelSubmit}>
+                        Cancelar
+                    </Button>
+                    <Button variant="primary" onClick={confirmSubmit}>
+                        Confirmar
+                    </Button>
+                </Modal.Footer>
+            </Modal>
+            ) : (
+            <Modal show={showConfirmation} onHide={cancelSubmit} centered>
+            <Modal.Header closeButton>
+                <Modal.Title>Comentario Posterior de la Pregunta Clave</Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+                <p><strong>Pregunta Clave:</strong> {keyQuestion.name}</p>
+                <p><strong>Comentario:</strong> {comentarioFinal}</p>
+                
+            </Modal.Body>
+            <Modal.Footer>
+                <Button variant="secondary" onClick={cancelSubmit}>
+                    Cancelar
+                </Button>
+                <Button variant="primary" onClick={confirmSubmit}>
+                    Confirmar
+                </Button>
+            </Modal.Footer>
+            </Modal>
+            )}
+
+            {/* Success Modal */}
+            <Modal show={showSuccess} onHide={() => {}} centered>
+                <Modal.Body className="text-center p-4">
+                    <div className="text-success mb-3" style={{ fontSize: '3rem' }}>
+                        <i className="bi bi-check-circle-fill"></i>
+                    </div>
+                    <h3>Respuesta guardada exitosamente</h3>
+                    <p>Redirigiendo...</p>
+                </Modal.Body>
+            </Modal>
+
+            
         </div>
     );
 };

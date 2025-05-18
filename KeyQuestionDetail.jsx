@@ -69,11 +69,14 @@ const KeyquestionDetail = () => {
     const [keyQuestions, setKeyQuestions] = useState([]);
     const [usuarios, setUsuarios] = useState([]);
     const [comentarios, setComentarios] = useState([]);
+    const [documentos, setDocumentos] = useState([]);
+    const [respuestas, setRespuestas] = useState([]);
     const [showPopup, setShowPopup] = useState(false);
     const [showPopupDoc, setShowPopupDoc] = useState(false);
     const [showPopupUlr, setShowPopupUrl] = useState(false);
     const [url, setUrls] = useState([]);
     const [usuarioSeleccionado, setUsuarioSeleccionado] = useState(null);
+    const [usuariosConRespuestas, setUsuariosConRespuestas] = useState([]);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -102,51 +105,89 @@ const KeyquestionDetail = () => {
 
 
     useEffect(() => {
-                const fetchKeyQuestion = async () => {
-                    console.log('id_pregunta clave',pc_id)
-                    console.log('id de la pregunta unica',pcp_id)
-                    try {
-                        const response = await fetch(`http://localhost:3000/api/themes/preguntaClave/all/preguntas/preguntaClave/${pc_id}/${pcp_id}`);
-                        if (!response.ok) {
-                            const errorData = await response.json().catch(() => ({
-                                message: 'Error desconocido'
-                            }));
-                            throw new Error(errorData.message || 'La respuesta de la web no fue satisfactoria');
-                        }
-                        
-                        const data = await response.json();
-                        console.log('respuesta',data)
-
-                        setKeyQuestions(data)
-
-                        const users = data.usuarios
-                        setUsuarios(users)
-
-                        const comments = data.comentarios
-                        setComentarios(comments)
-    
-                        // const formattedQuestions = data.recordset.map((question) => ({
-                        //     id: question.id,
-                        //     nombre: question.nombre,
-                        //     hora_creacion: new Date(question.hora_creacion).toLocaleDateString('es-ES', {
-                        //         year: 'numeric',
-                        //         month: 'long',
-                        //         day: 'numeric'
-                        //       }),
-                        //     creador: question.creador,
-                        //     decision: question.decisionFinal,
-                        //     comentario: question.comentario,
-                        //     creador_nombre : question.creador_p, 
-                        //   }));
-                          
-                        //  setKeyQuestions(formattedQuestions);
-                    }catch (error) {
-                        console.error('Error obteniendo los datos', error);
-                    }
+        const fetchKeyQuestion = async () => {
+            console.log('id_pregunta clave',pc_id)
+            console.log('id de la pregunta unica',pcp_id)
+            try {
+                const response = await fetch(`http://localhost:3000/api/themes/preguntaClave/all/preguntas/preguntaClave/${pc_id}/${pcp_id}`);
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({
+                        message: 'Error desconocido'
+                    }));
+                    throw new Error(errorData.message || 'La respuesta de la web no fue satisfactoria');
                 }
-        
-                fetchKeyQuestion();
-            }, []);
+                
+                const data = await response.json();
+                console.log('respuesta',data)
+
+                setKeyQuestions(data)
+
+                const users = data.usuarios
+                setUsuarios(users)
+
+                const comments = data.comentarios
+                setComentarios(comments)
+
+            }catch (error) {
+                console.error('Error obteniendo los datos', error);
+            }
+        }
+
+        fetchKeyQuestion();
+    }, []);
+
+    useEffect(() => {
+        const fetchAnswerKeyQuestion = async () => {
+            console.log('id_pregunta clave respuestas',pc_id)
+            console.log('id de la pregunta unica respuestas',pcp_id)
+            try {
+                const response = await fetch(`http://localhost:3000/api/themes/preguntasClave/respuestas/${pcp_id}`);
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({
+                        message: 'Error desconocido'
+                    }));
+                    throw new Error(errorData.message || 'La respuesta de la web no fue satisfactoria');
+                }
+                
+                const data = await response.json();
+                console.log('respuesta de respuestas',data)
+
+                const respuesta = data.recordset
+                console.log('lo de dentro es',respuesta)
+                setRespuestas(respuesta)
+
+
+            }catch (error) {
+                console.error('Error obteniendo los datos', error);
+            }
+        }
+
+        fetchAnswerKeyQuestion();
+    }, []);
+
+    useEffect(() => {
+        if (usuarios.length > 0 && respuestas.length > 0) {
+            const combinados = usuarios.map((usuario) => {
+                const respuestaUsuario = respuestas.find(
+                    (resp) => resp.creador === usuario.usuario_id
+                );
+    
+                return {
+                    ...usuario,
+                    respuesta: respuestaUsuario ? respuestaUsuario.respuesta === true
+                    ? "Sí"
+                    : "No"
+                    : null,
+                    hora_creacion: respuestaUsuario ? respuestaUsuario.hora_creacion : null,
+                    respuesta_id: respuestaUsuario ? respuestaUsuario.id : null,
+                    flag: respuestaUsuario ? respuestaUsuario.flag : null
+                };
+            });
+    
+            setUsuariosConRespuestas(combinados);
+        }
+    }, [usuarios, respuestas]);
 
         if (loading){
             return (
@@ -173,19 +214,20 @@ const KeyquestionDetail = () => {
               }
           };
 
+
           const handleOpenDocument = async (usuario) => {
             console.log('los datos son estos',usuario)
             setUsuarioSeleccionado(usuario);
             setShowPopupDoc(true);
             console.log('el id de la pregunta',keyQuestions.pcp_id)
 
-            // try {
-            //     const res = await fetch(`http://localhost:3000/api/themes/preguntasClave/comentarios/${keyQuestions.pcp_id}/${usuario.usuario_id}`);
-            //     const datos = await res.json();
-            //     setComentarios(datos);
-            //   } catch (err) {
-            //     console.error('Error al obtener comentarios:', err);
-            //   }
+            try {
+                const res = await fetch(`http://localhost:3000/api/themes/preguntasClave/documentos/${keyQuestions.pcp_id}/${usuario.usuario_id}`);
+                const datos = await res.json();
+                setDocumentos(datos);
+              } catch (err) {
+                console.error('Error al obtener documentos:', err);
+              }
           };
 
           const handleOpenUrl = async (usuario) => {
@@ -286,7 +328,7 @@ const KeyquestionDetail = () => {
             </Container>
             <div style={{ padding: '20px', border: '1px solid rgb(178, 176, 176)', borderRadius: '8px', margin: '15px'}}>
             <DataGrid
-                    dataSource={usuarios}
+                    dataSource={usuariosConRespuestas}
                     keyExpr="id"
                     showBorders={true}
                     allowColumnReordering={true}
@@ -314,6 +356,8 @@ const KeyquestionDetail = () => {
                     />
                     <Column dataField="id" caption="ID" allowEditing={false} width={50} />
                     <Column dataField="NombreUsuario" allowEditing={false} caption='Usuarios' />
+                    <Column dataField="respuesta" allowEditing={false} caption='Respuesta' />
+                    
                     
                     <Column caption="Comentarios" allowEditing={false} 
                     cellRender={({ data }) => (
@@ -388,6 +432,32 @@ const KeyquestionDetail = () => {
             </Popup>
 
             <Popup
+                visible={showPopupDoc}
+                onHiding={() => setShowPopupDoc(false)}
+                dragEnabled
+                closeOnOutsideClick
+                showCloseButton
+                width={700}
+                height={600}
+                >
+                <div>
+                    <label className="fw-bold mb-2">Bitácora de documentos</label>
+
+                    <DataGrid
+                    dataSource={documentos.recordset}
+                    keyExpr="id"
+                    showBorders={true}
+                    height={300}
+                    >
+                    <Column dataField="id" caption="ID" width={100} />
+                    <Column dataField="NombreUsuario" caption="Creador" width={150} />
+                    <Column dataField="documento" caption="Documento" />
+                    <Column dataField="hora_creacion" caption="Fecha" dataType="datetime" width={180} />
+                    </DataGrid>
+                </div>
+            </Popup>
+
+            <Popup
                 visible={showPopupUlr}
                 onHiding={() => setShowPopupUrl(false)}
                 dragEnabled
@@ -407,7 +477,7 @@ const KeyquestionDetail = () => {
                     >
                     <Column dataField="id" caption="ID" width={100} />
                     <Column dataField="NombreUsuario" caption="Creador" width={150} />
-                    <Column dataField="texto" caption="Comentario" />
+                    <Column dataField="texto" caption="Enlace" />
                     <Column dataField="hora_creacion" caption="Fecha" dataType="datetime" width={180} />
                     </DataGrid>
                 </div>

@@ -7,7 +7,7 @@ import "../Styles/Dashboard.css"
 import saveAs from 'file-saver';
 import { Workbook } from 'exceljs';
 import { exportDataGrid } from 'devextreme/excel_exporter';
-import { Navbar, Nav, Button, Spinner, Container, Row, Col, Badge } from "react-bootstrap";
+import { Navbar, Nav, Button, Spinner, Container, Row, Col, Badge, Modal, ListGroup } from "react-bootstrap";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
 
@@ -26,6 +26,29 @@ const onExporting = (e) => {
     });
 };
 
+const normalizeText = (text) => {
+    return text
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$/g, "")
+        .trim()
+        .toLowerCase();
+};
+
+const normalizeForDisplay = (str) => {
+    let core = str.replace(/^[¿?]+|[¿?]+$/g, '').trim();
+    core = core.charAt(0).toUpperCase() + core.slice(1);
+    return `¿${core}?`;
+};
+
+const hasSymbolAtEdges = (text) => /^[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ]+|[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ]+$/.test(text.trim());
+
+const isOnlySpecialCharsOrNumbers = (text) => {
+    const cleaned = text.trim();
+    const hasLetters = /[a-zA-ZáéíóúÁÉÍÓÚñÑ]/.test(cleaned); // acepta letras con acentos y eñes
+    return !hasLetters;
+};
+
 const Keyquestion = () => {
     const [user, setUser] = useState(null);
     const [loading,setLoading] = useState(true);
@@ -36,6 +59,11 @@ const Keyquestion = () => {
     const [showValidationMessage, setShowValidationMessage] = useState(false);
     const [toastMessage,setToastMessage] = useState("");
     const [keyQuestionName, setKeyQuestionName] = useState("");
+    const [keyQuestions, setKeyQuestions] = useState([]);
+    const [keyName,setKeyName] = useState("");
+    const [showConfirmation, setShowConfirmation] = useState(false);
+    const [showSuccess, setShowSuccess] = useState(false);
+    const [usuarioAleatorio, setUsuarioAleatorio] = useState("");
     const navigate = useNavigate();
 
 
@@ -108,6 +136,14 @@ const Keyquestion = () => {
             setUsuarios(usuariosArray);
             setSelectedUserKeys(preselected);
             console.log('usuariosArray',usuariosArray)
+
+            const comiteUsers = usuariosArray.filter(user => user.nombreTipo.toLowerCase() === 'comite');
+            if (comiteUsers.length > 0) {
+                const randomUser = comiteUsers[Math.floor(Math.random() * comiteUsers.length)];
+                console.log("👤 Usuario comite aleatorio:", randomUser);
+                setUsuarioAleatorio(randomUser);  // si defines ese estado
+            }
+
           } catch (error) {
             console.error('Error obteniendo los datos', error);
           }
@@ -146,6 +182,43 @@ const Keyquestion = () => {
     
             fetchThemes();
         }, []);
+
+    useEffect(() => {
+        const fetchKeyQuestion = async () => {
+            try {
+                const response = await fetch('http://localhost:3000/api/themes/preguntaClave/all');
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({
+                        message: 'Error desconocido'
+                    }));
+                    throw new Error(errorData.message || 'La respuesta de la web no fue satisfactoria');
+                }
+
+                const data = await response.json();
+                console.log('respuesta',data)
+
+                const formattedQuestions = data.recordset.map((question) => ({
+                    id: question.id,
+                    nombre: question.nombre,
+                    hora_creacion: new Date(question.hora_creacion).toLocaleDateString('es-ES', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                        }),
+                    creador: question.creador,
+                    decision: question.decisionFinal,
+                    comentario: question.comentario,
+                    creador_nombre : question.creador_p, 
+                    }));
+                    
+                    setKeyQuestions(formattedQuestions);
+            }catch (error) {
+                console.error('Error obteniendo los datos', error);
+            }
+        }
+
+        fetchKeyQuestion();
+    }, []);
 
 
     const handleCheckboxChange = (themeId, questionText) => {
@@ -198,6 +271,27 @@ const Keyquestion = () => {
 
         }
 
+        const normalizedCurrent = normalizeText(keyQuestionName);
+
+        if (keyQuestions.some(q => normalizeText(q.nombre) === normalizedCurrent)) {
+            const message = 'Esta pregunta clave ya existe en el tema';
+            showValidationPopup(message);
+            return;
+        }
+
+        if (isOnlySpecialCharsOrNumbers(keyQuestionName)) {
+            const message = 'La pregunta debe contener al menos una letra.';
+            showValidationPopup(message);
+            return;
+        }
+
+        if (hasSymbolAtEdges(keyQuestionName)) {
+            const message = 'La pregunta no debe comenzar ni terminar con símbolos.';
+            showValidationPopup(message);
+            return;
+        }
+
+
         if (!hasSelectedQuestions()) {
             const message = 'Debes seleccionar al menos una pregunta '
             showValidationPopup(message);
@@ -205,17 +299,8 @@ const Keyquestion = () => {
 
         }
 
-        let formattedQuestion = keyQuestionName.trim();
-
-        formattedQuestion = formattedQuestion.charAt(0).toUpperCase() + formattedQuestion.slice(1);
-
-        if (!formattedQuestion.startsWith('¿')) {
-            formattedQuestion = '¿' + formattedQuestion;
-        }
-        if (!formattedQuestion.endsWith('?')) {
-            formattedQuestion += '?';
-        }
-        setKeyQuestionName(formattedQuestion);
+        const formattedQuestion = normalizeForDisplay(keyQuestionName)
+        setKeyName(formattedQuestion)
 
         console.log('Preguntas seleccionadas:', SelectedQuestions);
         console.log('Usuarios seleccionados:', selectedUserKeys);
@@ -225,10 +310,45 @@ const Keyquestion = () => {
             nombrePreguntaClave: formattedQuestion,
             usuarios: selectedUserKeys,
             preguntasPorTema: SelectedQuestions,
-            creador : user.email
+            creador : user.email,
+            usuarioElegido : usuarioAleatorio.Nombre
         };
 
         console.log('respuesta enviada',payload)
+
+        setShowConfirmation(true);
+
+        // try {
+        //     const response = await fetch('http://localhost:3000/api/themes/crear/preguntaClave', {
+        //         method: 'POST',
+        //         headers: {
+        //             'Content-Type': 'application/json'
+        //         },
+        //         body: JSON.stringify(payload)
+        //     });
+    
+        //     if (!response.ok) {
+        //         throw new Error('Error al guardar los datos');
+        //     }
+    
+        //     showValidationPopup('Datos guardados exitosamente.');
+        // } catch (error) {
+        //     console.error(error);
+        //     showValidationPopup('Error al guardar los datos.');
+        // }     
+        
+    };
+
+    const confirmSubmit = async () => {
+        setShowConfirmation(false);
+
+        const payload = {
+            nombrePreguntaClave: keyName,
+            usuarios: selectedUserKeys,
+            preguntasPorTema: SelectedQuestions,
+            creador : user.email,
+            usuarioElegido : usuarioAleatorio.Nombre
+        };
 
         try {
             const response = await fetch('http://localhost:3000/api/themes/crear/preguntaClave', {
@@ -238,17 +358,24 @@ const Keyquestion = () => {
                 },
                 body: JSON.stringify(payload)
             });
-    
+
+
+            const data = await response.json();
+
             if (!response.ok) {
-                throw new Error('Error al guardar los datos');
+                throw new Error(data.message || 'Error al crear el tema');
             }
-    
-            showValidationPopup('Datos guardados exitosamente.');
+
+            setShowSuccess(true);
+            setTimeout(() => navigate('/preguntas-clave'), 2000);
         } catch (error) {
-            console.error(error);
+            console.error('Submission error:', error);
             showValidationPopup('Error al guardar los datos.');
-        }     
-        
+        }
+    };
+
+    const cancelSubmit = () => {
+        setShowConfirmation(false);
     };
 
     return (
@@ -466,7 +593,34 @@ const Keyquestion = () => {
                     </div>
              )}
     
-          
+        {/* Confirmation Modal */}
+            <Modal show={showConfirmation} onHide={cancelSubmit} centered>
+                <Modal.Header closeButton>
+                    <Modal.Title>¿Confirmar creación la Pregunta Clave?</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <p><strong>Nombre de la pregunta clave:</strong> {keyName}</p>
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={cancelSubmit}>
+                        Cancelar
+                    </Button>
+                    <Button variant="primary" onClick={confirmSubmit}>
+                        Confirmar
+                    </Button>
+                </Modal.Footer>
+            </Modal>
+
+            {/* Success Modal */}
+            <Modal show={showSuccess} onHide={() => {}} centered>
+                <Modal.Body className="text-center p-4">
+                    <div className="text-success mb-3" style={{ fontSize: '3rem' }}>
+                        <i className="bi bi-check-circle-fill"></i>
+                    </div>
+                    <h3>Pregunta Clave creada exitosamente</h3>
+                    <p>Redirigiendo...</p>
+                </Modal.Body>
+            </Modal>
         </div>
 
         

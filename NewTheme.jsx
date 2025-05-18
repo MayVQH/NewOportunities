@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState,useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Container, Form, Button, ListGroup, Alert, Modal, Row, Col, Card } from "react-bootstrap";
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -12,6 +12,34 @@ const NewTheme = () => {
     const [showConfirmation, setShowConfirmation] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
     const [error, setError] = useState('');
+    const [themes, setThemes] = useState([]); 
+
+    useEffect(() => {
+            const fetchThemes = async () => {
+                try {
+                    const response = await fetch('http://localhost:3000/api/themes/getall');
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({
+                            message: 'Error desconocido'
+                        }));
+                        throw new Error(errorData.message || 'La respuesta de la web no fue satisfactoria');
+                    }
+    
+                    const data = await response.json();
+                    console.log('respuesta',data)
+                    setThemes(data.map(theme => ({
+                        id: theme.id,
+                        nombre: theme.nombre,
+                        questions: theme.preguntas || [],
+                        flag:theme.flag
+                    })));
+                } catch (error) {
+                    console.error('Error obteniendo los datos', error);
+                }
+            };
+    
+            fetchThemes();
+        }, []);
 
     const handleAddQuestion = () => {
         if (!currentQuestion.trim()) {
@@ -19,17 +47,9 @@ const NewTheme = () => {
             return;
         }
 
-        const cleanQuestion = (str) => {
-            return str
-                .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // quita tildes
-                .replace(/^[¿?]+|[¿?]+$/g, '') // quita ¿ o ? del inicio o final
-                .trim()
-                .toLowerCase();
-        };
-
         const normalizeForDisplay = (str) => {
             let core = str
-            .replace(/^[¿?]+|[¿?]+$/g, '') // elimina signos si los tiene
+            .replace(/^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$/g, "") // elimina signos si los tiene
             .trim();
 
             core = core.charAt(0).toUpperCase() + core.slice(1);
@@ -37,19 +57,53 @@ const NewTheme = () => {
             return `¿${core}?`;
         };
 
-        const normalizedCurrent = cleanQuestion(currentQuestion);
+        const normalizedCurrent = normalizeText(currentQuestion);
 
-        if (questions.some(q => cleanQuestion(q) === normalizedCurrent)) {
+        if (questions.some(q => normalizeText(q) === normalizedCurrent)) {
             setError('Esta pregunta ya existe en el tema');
             return;
         }
 
-        const formattedQuestion = normalizeForDisplay(currentQuestion);
+        if (isOnlySpecialCharsOrNumbers(currentQuestion)) {
+            setError('La pregunta debe contener al menos una letra.');
+            return;
+        }
 
-        setQuestions([...questions, formattedQuestion]);
+        if (hasSymbolAtEdges(currentQuestion)) {
+            setError('La pregunta no debe comenzar ni terminar con símbolos.');
+            return;
+        }
+
+
+        const formattedQuestionDisplay = normalizeForDisplay(currentQuestion);
+
+        setQuestions([...questions, formattedQuestionDisplay]);
         setCurrentQuestion('');
         setError('');
     };
+
+    const normalizeText = (text) => {
+        return text
+            .normalize("NFD")                          // Quita acentos
+            .replace(/[\u0300-\u036f]/g, "")           // Remueve marcas diacríticas
+            .replace(/^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$/g, "") // Elimina símbolos al inicio y fin
+            .trim()
+            .toLowerCase();                            // Convierte a minúsculas
+    };
+
+    const hasSymbolAtEdges = (text) => /^[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ]+|[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ]+$/.test(text.trim());
+
+    const isOnlySpecialCharsOrNumbers = (text) => {
+        const cleaned = text.trim();
+        const hasLetters = /[a-zA-ZáéíóúÁÉÍÓÚñÑ]/.test(cleaned); // acepta letras con acentos y eñes
+        return !hasLetters;
+    };
+
+    const formatTitle = (text) => {
+        const cleaned = text.trim().toLowerCase();
+        return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+    };
+
 
     const handleQuestionChange = (e) => {
         setCurrentQuestion(e.target.value);
@@ -67,6 +121,28 @@ const NewTheme = () => {
             setError('El nombre del tema es requerido');
             return;
         }
+
+        if (isOnlySpecialCharsOrNumbers(themeName)) {
+            setError('El nombre del tema debe contener al menos una letra.');
+            return;
+        }
+
+        if (hasSymbolAtEdges(themeName)) {
+            setError('El nombre del tema no debe comenzar ni terminar con símbolos.');
+            return;
+        }
+
+        const normalizedNewName = normalizeText(themeName);
+        const nameExists = themes.some(theme => normalizeText(theme.nombre) === normalizedNewName);
+
+        if (nameExists) {
+            setError('Ya existe un tema con un nombre similar. Por favor usa un nombre diferente.');
+            return;
+        }
+    
+        const formattedName = formatTitle(themeName);
+        setThemeName(formattedName);
+
 
         if (questions.length === 0) {
             setError('Debe agregar al menos una pregunta');
