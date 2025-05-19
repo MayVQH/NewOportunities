@@ -11,6 +11,9 @@ const Temas = () => {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [themeToDelete, setThemeToDelete] = useState(null);
+    const [temasTotales, setTemasTotales] = useState([]);
+    const [preguntasTotales, setPreguntasTotales] = useState([]);
+    const [showWarningModal, setShowWarningModal] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -59,12 +62,49 @@ const Temas = () => {
         fetchThemes();
     }, []);
 
+    useEffect(() => {
+        const fetchThemesId = async () => {
+            try {
+                const response = await fetch('http://localhost:3000/api/themes/totales/preguntasTemas');
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({
+                        message: 'Error desconocido'
+                    }));
+                    throw new Error(errorData.message || 'La respuesta de la web no fue satisfactoria');
+                }
+
+                const data = await response.json();
+                console.log('respuesta',data)
+
+                setTemasTotales(data.temasTotales); 
+                setPreguntasTotales(data.preguntasTotales);
+
+            } catch (error) {
+                console.error('Error obteniendo los datos', error);
+            }
+        };
+
+        fetchThemesId();
+    }, []);
+
+    console.log(preguntasTotales)
+
     const handleLogout = () => {
         sessionStorage.removeItem("user");
         navigate("/");
     };
 
     const handleDeleteClick = (themeId) => {
+        const temaEnUso = temasTotales.map(t => t.temasTotales)
+        .includes(themeId);
+        console.log('id del tema',themeId)
+        console.log('verdadero o falso',temaEnUso)
+        if (temaEnUso) {
+            setShowDeleteModal(false); 
+            setShowWarningModal(true); 
+            return;
+        }
+
         setThemeToDelete(themeId);
         setShowDeleteModal(true);
     };
@@ -144,6 +184,10 @@ const Temas = () => {
                             <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/enrolamiento")}>Enrolamiento</Nav.Link>)}
                             {(user.tipoId === '7D532F89-A63E-4667-B7CB-A4B477A55017' || user.tipoId === 'D3B78325-006E-4230-AE7E-C188181AE8B8') && (
                             <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/dashboard")}>Dashboard</Nav.Link>)}
+                            {(user.tipoId === '7D532F89-A63E-4667-B7CB-A4B477A55017') && (   
+                            <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/configuracion")} title="Configuración">
+                                <i className="bi bi-gear" style={{ fontSize: '1.2rem' }}></i>
+                            </Nav.Link>)}
                         </Nav>
                         <Button variant="outline-light" className="ms-auto" onClick={handleLogout}>Sign out</Button> {/* Changed to ms-auto */}
                     </Navbar.Collapse>
@@ -247,6 +291,21 @@ const Temas = () => {
                     </div>
                     <h4>Tema eliminado correctamente</h4>
                 </Modal.Body>
+            </Modal>
+
+            {/* Modal de advertencia de tema en uso */}
+            <Modal show={showWarningModal} onHide={() => setShowWarningModal(false)} centered>
+                <Modal.Header closeButton>
+                    <Modal.Title>Tema en uso</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <p>Este tema no se puede eliminar porque está siendo utilizado en una pregunta clave abierta.</p>
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="primary" onClick={() => setShowWarningModal(false)}>
+                        Entendido
+                    </Button>
+                </Modal.Footer>
             </Modal>
         </div>
     );

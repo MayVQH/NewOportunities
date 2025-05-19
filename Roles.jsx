@@ -278,6 +278,10 @@ const PruebaRoles = () => {
                                     <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/enrolamiento")}>Enrolamiento</Nav.Link>)}
                                     {(user.tipoId === '7D532F89-A63E-4667-B7CB-A4B477A55017' || user.tipoId === 'D3B78325-006E-4230-AE7E-C188181AE8B8') && (
                                     <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/dashboard")}>Dashboard</Nav.Link>)}
+                                    {(user.tipoId === '7D532F89-A63E-4667-B7CB-A4B477A55017') && (   
+                                    <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/configuracion")} title="Configuración">
+                                      <i className="bi bi-gear" style={{ fontSize: '1.2rem' }}></i>
+                                    </Nav.Link>)}
                                 </Nav>
                                 <Button variant="outline-light" className="ms-auto" onClick={handleLogout}>Sign out</Button> {/* Changed to ms-auto */}
                             </Navbar.Collapse>

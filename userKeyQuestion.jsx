@@ -6,7 +6,7 @@ import Button from 'devextreme-react/button';
 import Popup from 'devextreme-react/popup';
 import 'devextreme/dist/css/dx.light.css';
 import "../Styles/UserKeyQuestion.css"
-import { Navbar, Nav, Spinner, Container, Row, Col } from "react-bootstrap";
+import { Navbar, Nav, Spinner, Container, Row, Col,Modal } from "react-bootstrap";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
 import { useRef } from 'react';
@@ -40,11 +40,12 @@ const UserKeyQuestion = () => {
     const [comentarios, setComentarios] = useState([]);
     const [documentos, setDocumentos] = useState([]);
     const [preguntaSeleccionada, setPreguntaSeleccionada] = useState(null);
-    //const [popupVisible, setPopupVisible] = useState(false);
     const [confirmVisible, setConfirmVisible] = useState(false);
     const [config, setConfig] = useState({});
     const [errorMsg, setErrorMsg] = useState('');
     const [errorComentario, setErrorComentario] = useState('');
+    const [respuestas, setRespuestas] = useState([]);
+    const [modalRespuestasCompletas, setModalRespuestasCompletas] = useState(false);
     const navigate = useNavigate();
 
     const fileInputRef = useRef(null);
@@ -135,12 +136,63 @@ const UserKeyQuestion = () => {
     fetchConfiguration();
     }, []);
 
+    useEffect(() => {
+        if (!user || !keyQuestion.id) return;
+        const fetchAnswerKeyQuestion = async () => {
+            console.log('id_pregunta clave respuestas',keyQuestion.id)
+            try {
+                const response = await fetch(`http://localhost:3000/api/themes/preguntasClave/respuestas/${keyQuestion.id}/${user.id}`);
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({
+                        message: 'Error desconocido'
+                    }));
+                    throw new Error(errorData.message || 'La respuesta de la web no fue satisfactoria');
+                }
+                
+                const data = await response.json();
+                console.log('respuesta de respuestas',data)
+
+                const respuesta = data.recordset
+                console.log('lo de dentro es',respuesta)
+                setRespuestas(respuesta)
+
+
+            }catch (error) {
+                console.error('Error obteniendo los datos', error);
+            }
+        }
+
+        fetchAnswerKeyQuestion();
+    }, [user, keyQuestion.id]);
+
+    useEffect(() => {
+        if (pregunta.pregunta_pc.length > 0 && respuestas.length > 0) {
+
+            const totalRespuestas = respuestas[0]?.totalRespuestas || 0;
+            const totalPreguntas = pregunta.pregunta_pc.length;
+
+            console.log('el tamaño de respuestas es',totalRespuestas)
+            console.log('el tamaño de preguntas es',totalPreguntas)
+            if (totalRespuestas >= totalPreguntas) {               
+                setModalRespuestasCompletas(true);
+    
+                // Redirige automáticamente después de 3 segundos
+                setTimeout(() => {
+                    navigate('/preguntaClave/pregunta/lista');
+                }, 3000);
+            }
+        }
+    }, [pregunta.pregunta_pc, respuestas]);
+
     //   const [preguntas, setPreguntas] = useState([
     //     { id: 1, texto: '¿Pregunta 1?', activo: true },
     //     { id: 2, texto: '¿Pregunta 2?', activo: false },
     //     { id: 3, texto: '¿Pregunta 3?', activo: true },
     //     { id: 4, texto: '¿Pregunta 4?', activo: false },
     //   ]);
+
+
 
       const abrirPopupComentario = async (pregunta) => {
         setComentarioActual('');
@@ -435,6 +487,10 @@ const UserKeyQuestion = () => {
                             <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/enrolamiento")}>Enrolamiento</Nav.Link>)}
                             {(user.tipoId === '7D532F89-A63E-4667-B7CB-A4B477A55017' || user.tipoId === 'D3B78325-006E-4230-AE7E-C188181AE8B8') && (
                             <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/dashboard")}>Dashboard</Nav.Link>)}
+                            {(user.tipoId === '7D532F89-A63E-4667-B7CB-A4B477A55017') && (   
+                            <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/configuracion")} title="Configuración">
+                                <i className="bi bi-gear" style={{ fontSize: '1.2rem' }}></i>
+                            </Nav.Link>)}
                         </Nav>
                         <Button variant="outline-light" className="ms-auto" onClick={handleLogout}>Sign out</Button> {/* Changed to ms-auto */}
                     </Navbar.Collapse>
@@ -702,6 +758,21 @@ const UserKeyQuestion = () => {
                     Cancelar
                     </button>
                 </div>
+                </div>
+            </Popup>
+
+            <Popup
+                visible={modalRespuestasCompletas}
+                onHiding={() => setModalRespuestasCompletas(false)}
+                dragEnabled={false}
+                closeOnOutsideClick={false}
+                showTitle={false}
+                width={400}
+                height={200}
+            >
+                <div className="text-center p-4">
+                    <h5 className="fw-bold mb-4 text-danger">Ya has respondido todas las preguntas</h5>
+                    <p>Serás redirigido a la lista de preguntas clave.</p>
                 </div>
             </Popup>
 

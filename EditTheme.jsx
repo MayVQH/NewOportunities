@@ -40,6 +40,10 @@ const EditTheme = () => {
     });
     const [newQuestion, setNewQuestion] = useState('');
     const [editingQuestions, setEditingQuestions] = useState({});
+    const [temasTotales, setTemasTotales] = useState([]);
+    const [preguntasTotales, setPreguntasTotales] = useState([]);
+    const [showWarningModal, setShowWarningModal] = useState(false);
+
 
     useEffect(() => {
         const fetchThemeData = async () => {
@@ -65,6 +69,31 @@ const EditTheme = () => {
         };
         fetchThemeData();
     }, [id]);
+
+    useEffect(() => {
+        const fetchThemesId = async () => {
+            try {
+                const response = await fetch('http://localhost:3000/api/themes/totales/preguntasTemas');
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({
+                        message: 'Error desconocido'
+                    }));
+                    throw new Error(errorData.message || 'La respuesta de la web no fue satisfactoria');
+                }
+
+                const data = await response.json();
+                console.log('respuesta',data)
+
+                setTemasTotales(data.temasTotales); 
+                setPreguntasTotales(data.preguntasTotales);
+
+            } catch (error) {
+                console.error('Error obteniendo los datos', error);
+            }
+        };
+
+        fetchThemesId();
+    }, []);
 
     const handleAddQuestion = () => {
         if (!newQuestion.trim()) {
@@ -106,6 +135,14 @@ const EditTheme = () => {
     };
 
     const handleDeactivateQuestion = (questionId) => {
+        const temaEnUso = preguntasTotales.map(t => t.preguntasTotales)
+        .includes(questionId);
+        console.log('id del tema',questionId)
+        console.log('verdadero o falso',temaEnUso)
+        if (temaEnUso) {
+            setShowWarningModal(true); 
+            return;
+        }
         setTheme(prev => {
             const question = prev.activeQuestions.find(q => q.id === questionId);
             return {
@@ -115,6 +152,8 @@ const EditTheme = () => {
             };
         });
     };
+
+    console.log('temas id',temasTotales)
 
     const handleReactivateQuestion = (questionId) => {
         setTheme(prev => {
@@ -144,24 +183,8 @@ const EditTheme = () => {
     };
 
     const handleChange = (id, newValue) => {
-        // if (!newValue.trim()) {
-        //     setError('La pregunta no puede estar vacía');
-        //     return;
-        // }
 
         const normalizedInput = normalizeText(newValue);
-
-        // if (isOnlySpecialCharsOrNumbers(normalizedInput)) {
-        //     setError('La pregunta debe contener al menos una letra.');
-        //     return;
-        // }
-
-        // if (hasSymbolAtEdges(normalizedInput)) {
-        //     setError('La pregunta no debe comenzar ni terminar con símbolos.');
-        //     return;
-        // }
-
-        //const formatted = normalizeForDisplay(newValue);
 
         const actualizadas = theme.activeQuestions.find(a => a.id == id);
         actualizadas.text = normalizedInput;
@@ -396,6 +419,21 @@ const EditTheme = () => {
                     <h3>Tema actualizado correctamente</h3>
                     <p>Redirigiendo a la lista de temas...</p>
                 </Modal.Body>
+            </Modal>
+
+            {/* Modal de advertencia de tema en uso */}
+            <Modal show={showWarningModal} onHide={() => setShowWarningModal(false)} centered>
+                <Modal.Header closeButton>
+                    <Modal.Title>Pregunta en uso</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <p>Esta pregunta no se puede desactivar porque está siendo utilizado en una pregunta clave abierta.</p>
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="primary" onClick={() => setShowWarningModal(false)}>
+                        Entendido
+                    </Button>
+                </Modal.Footer>
             </Modal>
         </Container>
     );

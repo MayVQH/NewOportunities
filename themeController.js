@@ -2,7 +2,6 @@ import { getConnection,sql } from "../config/database.js";
 import { BlobServiceClient } from "@azure/storage-blob";
 // Conexión a Azure Blob
 
-
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 
@@ -1243,6 +1242,34 @@ export const getAnswerKeyQuestionsUser = async (req,res) => {
     }
 };
 
+export const getAnswerKeyQuestionsUserValidation = async (req,res) => {
+    try {
+        const conn = await getConnection();
+        const {id,user} = req.params;
+
+        console.log('id de la pregunta clave unica',id)
+
+        const result =await conn.request()
+        .input('id',sql.UniqueIdentifier,id)
+        .input('user',sql.UniqueIdentifier,user)
+        .query(`SELECT 
+                    count(p.respuesta) as totalRespuestas            
+                FROM RespuestasPreguntasClave p
+                WHERE p.pc_id = @id and p.creador = @user
+            `);
+            console.log('Temas body',result.recordset)
+            res.status(200).json(
+                result
+            );
+    } catch (error) {
+        console.error('Error en la base de datos:', error);
+        res.status(500).json({ 
+            message: 'Error obteniendo respuestas de la Preguntas clave',
+            details: error.message 
+        });
+    }
+};
+
 export const getReportKeyQuestions = async (req, res) => {
     try {
         const conn = await getConnection();
@@ -1552,5 +1579,81 @@ export const guardarConfiguracion = async (req, res) => {
     res.status(500).send('Error al guardar configuración');
   }
 };
+
+export const getUsersKeyQuestionsUser = async (req,res) => {
+    try {
+        const conn = await getConnection();
+        const {id} = req.params;
+
+        console.log('id de la pregunta clave unica',id)
+
+        const result =await conn.request()
+        .input('id',sql.UniqueIdentifier,id)
+        .query(`SELECT 
+                    COUNT(DISTINCT(p.creador)) as totalrespuestas,
+                    (SELECT
+                        COUNT(u.usuario_id) 
+                        FROM UsuariosPreguntaClave u
+                        WHERE u.pc_id = @id
+                    ) AS totalUsuarios
+                FROM RespuestasPreguntasClave p
+                WHERE p.pc_id = @id
+            `);
+
+            console.log('Temas body respuestas',result)
+            res.status(200).json(
+                result
+            );
+    } catch (error) {
+        console.error('Error en la base de datos:', error);
+        res.status(500).json({ 
+            message: 'Error obteniendo respuestas de la Preguntas clave',
+            details: error.message 
+        });
+    }
+};
+
+export const getIdThemesQuestions = async (req,res) => {
+    try {
+        const conn = await getConnection();
+
+        const resultThemes =await conn.request()
+        .query(`SELECT 
+                    DISTINCT(p.tema_id) as temasTotales
+                FROM PreguntasPreguntaClave p
+                    WHERE p.pc_id IN (
+                        SELECT id
+                        FROM PreguntasClave
+                        WHERE estado = 'Pendiente'
+                    )
+            `);
+
+        const resultQuestions =await conn.request()
+        .query(`SELECT 
+                    DISTINCT(p.preguntaTema_id) as preguntasTotales
+                FROM PreguntasPreguntaClave p
+                WHERE p.pc_id IN (
+                        SELECT id
+                        FROM PreguntasClave
+                        WHERE estado = 'Pendiente'
+                    )
+            `);
+                                
+        console.log('Temas body respuestas',resultThemes)
+        console.log('Temas body preguntas',resultQuestions)
+
+        res.status(200).json({
+            temasTotales: resultThemes.recordset,
+            preguntasTotales: resultQuestions.recordset
+        });
+    } catch (error) {
+        console.error('Error en la base de datos:', error);
+        res.status(500).json({ 
+            message: 'Error obteniendo datos para validacion de temas',
+            details: error.message 
+        });
+    }
+};
+
 
 

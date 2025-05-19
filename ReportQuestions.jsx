@@ -21,6 +21,10 @@ const Reportquestion = () => {
     const [pregunta, setPregunta] = useState({
             pregunta_pc: []
         });
+    const [respuestas, setRespuestas] = useState({
+        totalRespuestas: '' ,
+        totalUsuarios: ''        
+    });
     const [showPopupCom, setShowPopupCom] = useState(false);
     const [preguntaSeleccionada, setPreguntaSeleccionada] = useState(null);
     const [comentarios, setComentarios] = useState([]);
@@ -33,6 +37,8 @@ const Reportquestion = () => {
     const [showSuccess, setShowSuccess] = useState(false);
     const [showValidationMessage, setShowValidationMessage] = useState(false);
     const [toastMessage,setToastMessage] = useState("");
+    const [showWarning, setShowWarning] = useState(false);
+    const [allowContinue, setAllowContinue] = useState(false);
     const navigate = useNavigate();
 
     const [isSwitchOn, setIsSwitchOn] = useState(false); // Estado para el switch
@@ -100,6 +106,40 @@ const Reportquestion = () => {
             fetchThemeData();
         }, [id]);
 
+        useEffect(() => {
+            const fetchUserKeyQuestion = async () => {
+                try {
+                    console.log('id de la pregunta clave del front',id)
+                    const response = await fetch(`http://localhost:3000/api/themes/reporte/totales/${id}`);
+
+                    console.log('response',response)
+                    if (!response.ok) throw new Error('Error cargando la pregunta clave');
+                    
+                    const KeyQuestionUsers = await response.json();
+                    console.log('respuesta obtenida de respuestas preguntas claves',KeyQuestionUsers)
+                    setRespuestas({
+                        totalRespuestas: KeyQuestionUsers.recordset[0]?.totalrespuestas || 0,
+                        totalUsuarios: KeyQuestionUsers.recordset[0]?.totalUsuarios || 0,
+                    });
+
+                    setLoading(false);
+                    console.log('total usuarios respuestas',KeyQuestionUsers.recordset[0].totalrespuestas)
+                    console.log('total usuarios pregunta',KeyQuestionUsers.recordset[0].totalUsuarios)
+
+                    if (KeyQuestionUsers.recordset[0].totalrespuestas !== KeyQuestionUsers.recordset[0].totalUsuarios) {
+                        setShowWarning(true);
+                    } else {
+                        setAllowContinue(true); // mostrar vista normal si todos respondieron
+                    }
+
+                } catch (error) {
+                    console.error('Error:', error);
+                    setLoading(false);
+                }
+            };
+            fetchUserKeyQuestion();
+        }, [id]);
+
         if (loading){
             return (
                 <div className="loading-container">
@@ -107,6 +147,15 @@ const Reportquestion = () => {
                 </div>
             );
         }
+
+        const handleContinue = () => {
+            setShowWarning(false);
+            setAllowContinue(true);
+        };
+    
+        const handleCancel = () => {
+            navigate('/preguntas-clave');
+        };
 
 
         const dataFormateada = pregunta.pregunta_pc.map(p => {
@@ -129,6 +178,7 @@ const Reportquestion = () => {
         });
 
         console.log(dataFormateada)
+        console.log('respuestas',respuestas)
 
         
         const abrirPopupComentario = async (pregunta) => {
@@ -371,6 +421,10 @@ const Reportquestion = () => {
                                         <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/enrolamiento")}>Enrolamiento</Nav.Link>)}
                                         {(user.tipoId === '7D532F89-A63E-4667-B7CB-A4B477A55017' || user.tipoId === 'D3B78325-006E-4230-AE7E-C188181AE8B8') && (
                                         <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/dashboard")}>Dashboard</Nav.Link>)}
+                                        {(user.tipoId === '7D532F89-A63E-4667-B7CB-A4B477A55017') && (   
+                                        <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/configuracion")} title="Configuración">
+                                            <i className="bi bi-gear" style={{ fontSize: '1.2rem' }}></i>
+                                        </Nav.Link>)}
                                     </Nav>
                                     <Button variant="outline-light" className="ms-auto" onClick={handleLogout}>Sign out</Button> {/* Changed to ms-auto */}
                                 </Navbar.Collapse>
@@ -530,7 +584,7 @@ const Reportquestion = () => {
                                 borderRadius: '4px',
                                 cursor: 'pointer'
                             }}>
-                                Guardar Respuesta Final
+                                Enviar Respuesta Final
                             </button>
                         </div>
                     </div>
@@ -716,6 +770,30 @@ const Reportquestion = () => {
                     <p>Redirigiendo...</p>
                 </Modal.Body>
             </Modal>
+
+            <Popup
+                visible={showWarning}
+                onHiding={() => setShowWarning(false)}
+                showTitle={true}
+                title="Advertencia"
+                showCloseButton={true}
+                width={400}
+                height={220}
+            >
+                <div className="p-3">
+                    <p>⚠️ No todos los usuarios han respondido esta pregunta clave. ¿Deseas continuar de todos modos?</p>
+                    <div className="d-flex justify-content-end mt-4 gap-2">
+                        <button className="btn btn-secondary" onClick={handleCancel}>Cancelar</button>
+                        <button className="btn btn-primary" onClick={handleContinue}>Continuar</button>
+                    </div>
+                </div>
+            </Popup>
+
+            {!loading && allowContinue && (
+                <div>
+                    {/* Aquí tu vista principal si el usuario decide continuar */}
+                </div>
+            )}
 
             
         </div>

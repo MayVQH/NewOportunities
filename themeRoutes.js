@@ -6,7 +6,8 @@ createNewComment,createNewDocument,getUrlsKeyQuestions,createNewUrl,createNewAns
 getReportKeyQuestions,getComentsKeyQuestionsUser,getUrlsKeyQuestionsUser,
 getFullKeyQuestionDataDetail,getDocumentKeyQuestionsUser,getDocumentsKeyQuestions,
 getAnswerKeyQuestionsUser,changeFinalChoose,FinalCommentKeyQuestion,obtenerConfiguracion,
-guardarConfiguracion} from "../controllers/themeController.js";
+guardarConfiguracion,getAnswerKeyQuestionsUserValidation,getUsersKeyQuestionsUser,
+getIdThemesQuestions} from "../controllers/themeController.js";
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 
@@ -37,6 +38,7 @@ router.get('/preguntasClave/documentos/:id', getDocumentsKeyQuestions)
 router.get('/preguntasClave/comentarios/:id/:user', getComentsKeyQuestionsUser)
 router.get('/preguntasClave/documentos/:id/:user', getDocumentKeyQuestionsUser)
 router.get('/preguntasClave/respuestas/:id', getAnswerKeyQuestionsUser)
+router.get('/preguntasClave/respuestas/:id/:user', getAnswerKeyQuestionsUserValidation)
 router.post('/comentarios/guardar',createNewComment)
 router.post('/documentos/guardar',upload.single('archivo'),createNewDocument)
 router.get('/preguntasClave/enlaces/:id', getUrlsKeyQuestions)
@@ -49,6 +51,8 @@ router.get('/preguntaClave/all/preguntas/preguntaClave/:pc_id/:pcp_id', getFullK
 router.post('/preguntaClave/guardar/comentarioFinal/:id', FinalCommentKeyQuestion)
 router.get('/configuracion', obtenerConfiguracion)
 router.post('/configuracion/guardar', guardarConfiguracion)
+router.get('/reporte/totales/:id', getUsersKeyQuestionsUser)
+router.get('/totales/preguntasTemas', getIdThemesQuestions)
 
 
 

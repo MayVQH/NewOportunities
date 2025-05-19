@@ -15,7 +15,7 @@ import EditAllTheme from "./components/EditAllTheme";
 import UserKeyQuestion from "./components/userKeyQuestion";
 import ListKeyQuestion from "./components/ListKeyQuestion";
 import KeyquestionDetail from "./components/KeyQuestionDetail";
-import VentanaConfiguracion from "./components/GlobalConfiguration"; 
+import ConfiguracionGlobal from "./components/GlobalConfiguration";
 
 
 function App() {
@@ -64,6 +64,9 @@ function App() {
           </ProtectedRoute>}/>
           <Route path="/detalle/preguntaClave/:pcp_id/:pc_id" element={<ProtectedRoute allowedRoles={["D3B78325-006E-4230-AE7E-C188181AE8B8", "7D532F89-A63E-4667-B7CB-A4B477A55017"]}>
               <KeyquestionDetail />
+          </ProtectedRoute>} />
+          <Route path="/configuracion" element={<ProtectedRoute allowedRoles={["7D532F89-A63E-4667-B7CB-A4B477A55017"]}>
+              <ConfiguracionGlobal />
           </ProtectedRoute>} />
         </Routes> 
       </Router>
