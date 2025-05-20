@@ -39,6 +39,8 @@ const Reportquestion = () => {
     const [toastMessage,setToastMessage] = useState("");
     const [showWarning, setShowWarning] = useState(false);
     const [allowContinue, setAllowContinue] = useState(false);
+    const [config, setConfig] = useState({});
+    const [errorComentario, setErrorComentario] = useState('');
     const navigate = useNavigate();
 
     const [isSwitchOn, setIsSwitchOn] = useState(false); // Estado para el switch
@@ -139,6 +141,38 @@ const Reportquestion = () => {
             };
             fetchUserKeyQuestion();
         }, [id]);
+
+    useEffect(() => {
+        const fetchConfiguration = async () => {
+            try {
+                const response = await fetch(`http://localhost:3000/api/themes/configuracion`);
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({
+                        message: 'Error desconocido'
+                    }));
+                    throw new Error(errorData.message || 'La respuesta de la web no fue satisfactoria');
+                }
+                
+                const data = await response.json();
+                console.log('respuesta configuracion',data)
+    
+                const configuracion = {
+                    inputMin: parseInt(data.inputComentarioMin),
+                    inputMax: parseInt(data.inputComentarioMax),
+                    docMin: parseInt(data.DocumentoMin),
+                    docMax: parseInt(data.DocumentoMax),
+                }
+    
+                setConfig(configuracion)
+                
+    
+            }catch (error) {
+                console.error('Error obteniendo los datos', error);
+            }
+        }
+    
+        fetchConfiguration();
+        }, []);
 
         if (loading){
             return (
@@ -292,8 +326,22 @@ const Reportquestion = () => {
                     return
                 }
 
+                if (comentarioFinal.length < config.inputMin) {
+                    setErrorComentario(`El comentario debe tener al menos ${config.inputMin} caracteres.`);
+                    setTimeout(() => setErrorComentario(''), 4000);
+                    return;
+                }
+            
+                if (comentarioFinal.length > config.inputMax) {
+                setErrorComentario(`El comentario no puede superar los ${config.inputMax} caracteres.`);
+                setTimeout(() => setErrorComentario(''), 4000);
+                return;
+                }
+
                 const formattedQuestion = formatTitle(normalizeText(comentarioFinal))
                 setComentarioFinal(formattedQuestion)
+
+                
 
 
         
@@ -354,9 +402,23 @@ const Reportquestion = () => {
         };
 
         const handleEnviarComentarioFinal = async () => {
+
+            if (comentarioFinal.length < config.inputMin) {
+                setErrorComentario(`El comentario debe tener al menos ${config.inputMin} caracteres.`);
+                setTimeout(() => setErrorComentario(''), 4000);
+                return;
+            }
+        
+            if (comentarioFinal.length > config.inputMax) {
+            setErrorComentario(`El comentario no puede superar los ${config.inputMax} caracteres.`);
+            setTimeout(() => setErrorComentario(''), 4000);
+            return;
+            }
+            
             setShowConfirmation(false);
 
             const payload = {
+                decisionFinal: !isSwitchOn,
                 comentario: comentarioFinal,
                 pc_id: keyQuestion.id
             };
@@ -572,6 +634,12 @@ const Reportquestion = () => {
                                 width: '400px'
                                 }}
                             />
+
+                            {errorComentario && (
+                                <div style={{ color: 'red', marginTop: '5px' }}>
+                                    {errorComentario}
+                                </div>
+                            )}
                             <button 
                             onClick={handleSubmit}
                             disabled={!puedeEditar}
@@ -590,36 +658,61 @@ const Reportquestion = () => {
                     </div>
                 </div> ) : ( 
                     <div style={{ width: '95%', margin: '0 auto', marginTop: '20px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap', marginBottom: '10px'}}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <label htmlFor="comentarioInput" style={{ margin: 0 }}>Comentario Posterior</label>
-                        <input
-                          id="comentarioInput"
-                          type="text"
-                          placeholder="Escribe un comentario"
-                          value={comentarioFinal}
-                          onChange={handleComentarioChange}
-                          style={{
-                            padding: '6px 8px',
-                            borderRadius: '4px',
-                            border: '1px solid #ccc',
-                            width: '400px'
-                          }}
-                        />
-                        <button 
-                          onClick={handleEnviarComentarioFinal}
-                          style={{
-                            marginLeft: '10rem',
-                            padding: '6px 12px',
-                            backgroundColor: '#28a745',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          Enviar Comentario Posterior
-                        </button>
+                        {/* Título y switch */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' , marginRight: '20px'}}>
+                            <label style={{ margin: 0 }}>Se Cumplio</label>
+                            <span>Sí</span>
+                            <div className="form-check form-switch" style={{ marginBottom: 0 }}>
+                                <input
+                                className="form-check-input"
+                                type="checkbox"
+                                role="switch"
+                                id="switchCheckDefault"
+                                checked={isSwitchOn}
+                                onChange={handleSwitchChange}
+                                disabled={!puedeEditar}
+                                />
+                            </div>
+                            <span>No</span>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <label htmlFor="comentarioInput" style={{ margin: 0 }}>Comentario Posterior</label>
+                            <input
+                            id="comentarioInput"
+                            type="text"
+                            placeholder="Escribe un comentario"
+                            value={comentarioFinal}
+                            onChange={handleComentarioChange}
+                            style={{
+                                padding: '6px 8px',
+                                borderRadius: '4px',
+                                border: '1px solid #ccc',
+                                width: '400px'
+                            }}
+                            />
+                            {errorComentario && (
+                                <div style={{ color: 'red', marginTop: '5px' }}>
+                                    {errorComentario}
+                                </div>
+                            )}
+                            <button 
+                            onClick={handleEnviarComentarioFinal}
+                            style={{
+                                marginLeft: '10rem',
+                                padding: '6px 12px',
+                                backgroundColor: '#28a745',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer'
+                            }}
+                            >
+                            Enviar Comentario Posterior
+                            </button>
+                        </div>
                       </div>
                     </div>
                   </div>

@@ -216,6 +216,8 @@ const NewTheme = () => {
                 </Card.Body>
             </Card>
 
+            <p>Colocar preguntas que puedan responderse con un Si/No únicamente</p>
+
             <Card className="mb-4">
                 <Card.Body>
                     <Form.Group className="mb-3">

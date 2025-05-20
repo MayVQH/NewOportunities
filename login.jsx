@@ -31,6 +31,7 @@ const Login = () => {
             if (event.origin === "http://localhost:3000" && event.data.user) {
                 sessionStorage.setItem("user", JSON.stringify(event.data.user));
                 console.log('usuario registrado',event.data.user)
+                console.log('tipo de usuario',event.data.user.tipoId)
                 popup.close();
                 if(event.data.user.tipoId == '84F03A04-2891-4DE7-8A3D-DBD2018EAE47')
                     window.location.href = '/preguntaClave/pregunta/lista';

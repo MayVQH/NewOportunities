@@ -2,6 +2,7 @@ import { getConnection,sql } from "../config/database.js";
 import { BlobServiceClient } from "@azure/storage-blob";
 // Conexión a Azure Blob
 
+
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 
@@ -621,7 +622,8 @@ export const getAllKeyQuestions = async (req,res) => {
                     p.decisionFinal,
                     p.comentario,
                     p.comentarioFinal,
-                    p.estado               
+                    p.estado ,
+                    p.decisionImplementada             
                 FROM PreguntasClave p
                 WHERE p.flag = 1
                 ORDER BY p.hora_creacion DESC
@@ -751,7 +753,7 @@ export const getFullKeyQuestionData = async (req,res) => {
                         texto
                     FROM PreguntasPreguntaClave 
                     WHERE pc_id = @pc_id
-                    ORDER BY hora_creacion DESC
+                    ORDER BY hora_creacion ASC
                 `);
         
         console.log('preguntas de la pregunta clave',questionsResult)
@@ -927,6 +929,12 @@ export const createNewComment = async (req, res) => {
             .query('INSERT INTO ComentariosPreguntasClave (pc_id,pcp_id,texto,creador) VALUES (@idPreguntaClave,@idPregunta,@texto,@idcreador)');
 
         await transaction.commit();
+
+        res.status(200).json({
+            '':''
+            }
+        );
+
     } catch (error) {
         if (transaction && transaction._begun) {
             await transaction.rollback();
@@ -1481,11 +1489,13 @@ export const FinalCommentKeyQuestion = async (req,res) => {
 
     try {
         const {id} = req.params;
-        const {comentario,pc_id} = req.body;
+        const {decision,comentario,pc_id} = req.body;
+        const decide = req.body.decisionFinal;
 
         console.log('id de la pregunta clave',id)
         console.log('el comentario',comentario)
         console.log('id pregunta c',pc_id)
+        console.log('decision posterior',decide)
 
         transaction = new sql.Transaction(conn);
         await transaction.begin();
@@ -1493,9 +1503,11 @@ export const FinalCommentKeyQuestion = async (req,res) => {
         await new sql.Request(transaction)
         .input('id',sql.UniqueIdentifier,id)
         .input('comentario',sql.NVarChar,comentario)
+        .input('decision',sql.Bit,decide)
         .query(`
                UPDATE PreguntasClave
-                SET comentarioFinal = @comentario
+                SET comentarioFinal = @comentario,
+                    decisionImplementada = @decision
                 WHERE id = @id
             `);
         

@@ -46,6 +46,7 @@ const UserKeyQuestion = () => {
     const [errorComentario, setErrorComentario] = useState('');
     const [respuestas, setRespuestas] = useState([]);
     const [modalRespuestasCompletas, setModalRespuestasCompletas] = useState(false);
+    const [exitoComentario, setExitoComentario] = useState('');
     const navigate = useNavigate();
 
     const fileInputRef = useRef(null);
@@ -288,10 +289,12 @@ const UserKeyQuestion = () => {
       
           if (res.ok) {
             const comentarioGuardado = await res.json();
-            setComentarios(prev => [...prev, comentarioGuardado]); 
-            setComentarioActual('');           
+            console.log(comentarioGuardado)
+            setComentarioActual('');
+            
+            setExitoComentario('El comentario se envio correctamente'); 
+            setTimeout(() => setExitoComentario(''), 4000); 
           }
-
 
         } catch (err) {
           console.error('Error al enviar comentario:', err);
@@ -608,6 +611,13 @@ const UserKeyQuestion = () => {
                             {errorComentario}
                         </div>
                     )}
+
+                    {exitoComentario && ( 
+                        <div className="alert alert-success mt-2" role="alert">
+                            {exitoComentario}
+                        </div>
+                    )}
+
                     <textarea
                     value={comentarioActual}
                     onChange={(e) => setComentarioActual(e.target.value)}
@@ -616,16 +626,22 @@ const UserKeyQuestion = () => {
                     placeholder="Escribe tu comentario aquí..."
                     id="inputComentario"
                     />
-                    <small className="text-muted">
-                        {comentarioActual.length} / {config.inMax} caracteres
-                    </small>
 
-                    <Button
-                    text="Enviar comentario"
-                    type="success"
-                    onClick={enviarComentario}
-                    className="mb-3"
-                    />
+                    <div className="d-flex flex-column mb-3">
+                        <div className="d-flex justify-content-end">
+                            <small className="text-muted">
+                                {comentarioActual.length} / {config.inMax} caracteres
+                            </small>
+                    </div>
+
+                    <div className="d-flex justify-content-start mt-2">
+                        <Button
+                            text="Enviar comentario"
+                            type="success"
+                            onClick={enviarComentario}
+                        />
+                    </div>
+                    </div>
 
                     <DataGrid
                     dataSource={comentarios.recordset}
