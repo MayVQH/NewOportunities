@@ -623,7 +623,8 @@ export const getAllKeyQuestions = async (req,res) => {
                     p.comentario,
                     p.comentarioFinal,
                     p.estado ,
-                    p.decisionImplementada             
+                    p.decisionImplementada,
+                    p.hora_finalizacion           
                 FROM PreguntasClave p
                 WHERE p.flag = 1
                 ORDER BY p.hora_creacion DESC
@@ -1466,7 +1467,7 @@ export const changeFinalChoose = async (req,res) => {
         .input('comentario',sql.NVarChar,comentario)
         .query(`
                UPDATE PreguntasClave
-                SET comentario = @comentario, decisionFinal = @decision, estado = 'Finalizado'
+                SET comentario = @comentario, decisionFinal = @decision, estado = 'Finalizado', hora_finalizacion= getdate()
                 WHERE id = @id
             `);
         
@@ -1667,5 +1668,36 @@ export const getIdThemesQuestions = async (req,res) => {
     }
 };
 
+
+export const getAllInformation = async (req,res) => {
+    try {
+        const conn = await getConnection();
+        const result =await conn.request()
+        .query(`SELECT 
+                    p.id,
+                    p.pc_id,
+                    p.texto,
+                    p.flag,
+                    p.tema_id,
+                    p.preguntaTema_id,
+                    (
+                        SELECT u.nombre
+                        FROM Temas u
+                        WHERE u.id = p.tema_id
+                    ) AS nombreTema        
+                FROM PreguntasPreguntaClave p
+            `);
+            console.log('Temas body',result)
+            res.status(200).json(
+                result
+            );
+    } catch (error) {
+        console.error('Error en la base de datos:', error);
+        res.status(500).json({ 
+            message: 'Error obteniendo información de Preguntas clave y temas',
+            details: error.message 
+        });
+    }
+};
 
 

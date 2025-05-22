@@ -10,6 +10,7 @@ const ActivateAllTheme = () => {
     const [showSuccess, setShowSuccess] = useState(false);
     const [themes, setThemes] = useState([]); 
     const [theme] = useState({name: ''});
+    
 
     useEffect(() => {
             const fetchThemes = async () => {

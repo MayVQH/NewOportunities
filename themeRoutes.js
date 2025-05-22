@@ -7,7 +7,7 @@ getReportKeyQuestions,getComentsKeyQuestionsUser,getUrlsKeyQuestionsUser,
 getFullKeyQuestionDataDetail,getDocumentKeyQuestionsUser,getDocumentsKeyQuestions,
 getAnswerKeyQuestionsUser,changeFinalChoose,FinalCommentKeyQuestion,obtenerConfiguracion,
 guardarConfiguracion,getAnswerKeyQuestionsUserValidation,getUsersKeyQuestionsUser,
-getIdThemesQuestions} from "../controllers/themeController.js";
+getIdThemesQuestions,getAllInformation} from "../controllers/themeController.js";
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 
@@ -53,6 +53,7 @@ router.get('/configuracion', obtenerConfiguracion)
 router.post('/configuracion/guardar', guardarConfiguracion)
 router.get('/reporte/totales/:id', getUsersKeyQuestionsUser)
 router.get('/totales/preguntasTemas', getIdThemesQuestions)
+router.get('/informacion/all',getAllInformation)
 
 
 

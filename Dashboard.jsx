@@ -1,14 +1,20 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, Outlet } from "react-router-dom";
 import { Navbar, Nav, Button, Spinner, Container, Row, Col } from "react-bootstrap";
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, LabelList } from 'recharts';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
+import Keyquestion from "./KeyQuestions";
 
 const Dashboard = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [themes, setThemes] = useState([]);
+  const [keyQuestions, setKeyQuestions] = useState([]);
+  const [allInfo, setAllInfo] = useState([]);
+  const [temaCountsData, setTemaCountsData] = useState([]);
+  const [tiempoPromedio, setTiempoPromedio] = useState('');
+  const [similitudDecision, setSimilitudDecision] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -35,82 +41,191 @@ const Dashboard = () => {
     navigate("/");
   };
 
-  const handlePrevMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
-  };
+  useEffect(() => {
+          const fetchThemes = async () => {
+              try {
+                  const response = await fetch('http://localhost:3000/api/themes');
+                  if (!response.ok) {
+                      const errorData = await response.json().catch(() => ({
+                          message: 'Error desconocido'
+                      }));
+                      throw new Error(errorData.message || 'La respuesta de la web no fue satisfactoria');
+                  }
+  
+                  const data = await response.json();
+                  console.log('respuesta',data)
+                  setThemes(data.map(theme => ({
+                      id: theme.id,
+                      nombre: theme.nombre,
+                      questions: theme.preguntas || [],
+                      flag:theme.flag
+                  })));
+              } catch (error) {
+                  console.error('Error obteniendo los datos', error);
+              }
+          };
+  
+          fetchThemes();
+      }, []);
 
-  const handleNextMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
-  };
+  useEffect(() => {
+      const fetchKeyQuestion = async () => {
+          try {
+              const response = await fetch('http://localhost:3000/api/themes/preguntaClave/all');
+              if (!response.ok) {
+                  const errorData = await response.json().catch(() => ({
+                      message: 'Error desconocido'
+                  }));
+                  throw new Error(errorData.message || 'La respuesta de la web no fue satisfactoria');
+              }
 
-  const handleDateClick = (day) => {
-    const newDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
-    setSelectedDate(newDate);
-    navigate("/preguntas-clave", { state: { selectedDate: newDate } });
-  };
+              const data = await response.json();
+              console.log('respuesta preguntas clave',data)
 
-  const renderCalendar = () => {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const daysInPrevMonth = new Date(year, month, 0).getDate();
-    
-    const today = new Date();
-    const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
-    
-    const weeks = [];
-    let days = [];
-    
-    // Previous month's days
-    for (let i = firstDay - 1; i >= 0; i--) {
-      days.push(
-        <div key={`prev-${i}`} className="calendar-day text-muted p-2">
-          {daysInPrevMonth - i}
-        </div>
-      );
-    }
+              const formattedQuestions = data.recordset.map((question) => ({
+                  id: question.id,
+                  nombre: question.nombre,
+                  hora_creacion: new Date(question.hora_creacion).toLocaleDateString('es-ES', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    }),
+                  creador: question.creador,
+                  decision: question.decisionFinal,
+                  comentario: question.comentario,
+                  creador_nombre : question.creador_p, 
+                  comentarioFinal : question.comentarioFinal,
+                  estatus : question.estado,
+                  decisionPosterior : question.decisionImplementada,
+                  hora_finalizacion : new Date(question.hora_finalizacion).toLocaleDateString('es-ES', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  }),
+                  horaCreacion_sf : new Date(question.hora_creacion),
+                  horaFinalizacion_sf : new Date(question.hora_finalizacion)
+                }));
 
-    // Current month's days
-    for (let day = 1; day <= daysInMonth; day++) {
-      const isToday = isCurrentMonth && day === today.getDate();
-      const isSelected = selectedDate.getDate() === day && 
-                         selectedDate.getMonth() === month && 
-                         selectedDate.getFullYear() === year;
+                let totalDuracion = 0;
+                let count = 0;
+
+                formattedQuestions.forEach(q => {
+                  if (q.horaCreacion_sf && q.horaFinalizacion_sf) {
+                    const duracion = q.horaFinalizacion_sf - q.horaCreacion_sf;
+                    if (!isNaN(duracion) && duracion > 0) {
+                      totalDuracion += duracion;
+                      count++;
+                    }
+                  }
+                });
+
+                const promedioMs = totalDuracion / count;
+                const promedioDias = promedioMs / (1000 * 60 * 60 * 24);
+
+                const tiempoPromedioTexto = `${promedioDias.toFixed(1)} días`
+
+                setTiempoPromedio(tiempoPromedioTexto);
+                
+                setKeyQuestions(formattedQuestions);
+
+                
+
+                let comparables = 0;
+                let iguales = 0;
+
+                formattedQuestions.forEach(q => {
+                  if (q.decision!= null && q.decisionPosterior != null) {
+                    comparables++;
+                    if (q.decision == q.decisionPosterior) {
+                      iguales++;
+                    }
+                  }
+                })
+                console.log('totales de preguntas',comparables)
+                console.log('totales iguales',iguales)
+
+                const porcentajeSimilitud = comparables > 0 ? ((iguales / comparables) * 100).toFixed(1) : '0.0';
+                console.log(`Similitud decisión: ${porcentajeSimilitud}%`);
+                setSimilitudDecision(`${porcentajeSimilitud}`);
+                    }catch (error) {
+                        console.error('Error obteniendo los datos', error);
+                    }
+
+                
       
-      days.push(
-        <div 
-          key={day}
-          className={`calendar-day p-2 ${isToday ? 'today bg-primary text-white' : ''} ${isSelected ? 'selected bg-info text-dark' : ''}`}
-          onClick={() => handleDateClick(day)}
-          style={{ cursor: 'pointer' }}
-        >
-          {day}
-        </div>
-      );
+        }
 
-      if (days.length === 7 || day === daysInMonth) {
-        weeks.push(<div key={`week-${day}`} className="d-flex">{days}</div>);
-        days = [];
-      }
-    }
+       
+
+        fetchKeyQuestion();
+    }, []);
+
+    useEffect(() => {
+      const fetchAllInformation = async () => {
+          try {
+              const response = await fetch('http://localhost:3000/api/themes/informacion/all');
+              if (!response.ok) {
+                  const errorData = await response.json().catch(() => ({
+                      message: 'Error desconocido'
+                  }));
+                  throw new Error(errorData.message || 'La respuesta de la web no fue satisfactoria');
+              }
+
+              const data = await response.json();
+              console.log('respuesta informacion completa',data)
+
+              const formattedQuestions = data.recordset.map((question) => ({
+                  id: question.id,
+                  pc_id: question.pc_id,
+                  texto: question.texto,
+                  flag: question.flag,
+                  tema_id: question.tema_id,
+                  pregunta_id : question.preguntaTema_id, 
+                  nombreTema : question.nombreTema
+                }));
+                
+                setAllInfo(formattedQuestions);
+
+                // Agrupar por pc_id para obtener una lista única de preguntas clave
+                const uniquePcTema = new Map();
+
+                for (const item of formattedQuestions) {
+                  const key = `${item.pc_id}-${item.nombreTema}`;
+                  if (!uniquePcTema.has(key)) {
+                    uniquePcTema.set(key, {
+                      nombreTema: item.nombreTema,
+                      pc_id: item.pc_id,
+                    });
+                  }
+                }
+
+                // Contar cuantas veces aparece cada nombreTema asociado a preguntas clave distintas
+                const temaCounts = {};
+                for (const { nombreTema } of uniquePcTema.values()) {
+                  temaCounts[nombreTema] = (temaCounts[nombreTema] || 0) + 1;
+                }
+
+                // Formatear para la gráfica de barras
+                let temasData = Object.entries(temaCounts).map(([name, total]) => ({
+                  name,
+                  total,
+                }));
+
+                // Ordenar de mayor a menor y tomar solo el top 5
+                temasData = temasData.sort((a, b) => b.total - a.total).slice(0, 5);
+
+                setTemaCountsData(temasData);
+
+                console.log(allInfo)
+          }catch (error) {
+              console.error('Error obteniendo los datos', error);
+          }
+        }
+
+        fetchAllInformation();
+    }, []);
+
     
-    // Next month's days
-    if (days.length > 0) {
-      const daysNeeded = 7 - days.length;
-      for (let i = 1; i <= daysNeeded; i++) {
-        days.push(
-          <div key={`next-${i}`} className="calendar-day text-muted p-2">
-            {i}
-          </div>
-        );
-      }
-      weeks.push(<div key={`week-end`} className="d-flex">{days}</div>);
-    }
-    
-    return weeks;
-  };
 
   if (loading) {
     return (
@@ -121,6 +236,67 @@ const Dashboard = () => {
       </Container>
     );
   }
+
+  const activeThemesCount = themes.filter(theme => theme.flag).length;
+  const finalizadasCount = keyQuestions.filter(q => q.estatus == 'Finalizado').length;
+  const pendientesCount = keyQuestions.filter(q => q.estatus == 'Pendiente').length;
+  const PosteriorCount = keyQuestions.filter(q => q.decisionPosterior != null).length;
+
+  console.log('las preguntas con retroalimentacion son',PosteriorCount)
+
+  const filtradoPreguntas = keyQuestions.filter(q => q.decision != null)
+  const preguntasSi = filtradoPreguntas.filter(q => q.decision == 1)
+  const preguntasNo = filtradoPreguntas.filter(q => q.decision == 0)
+
+  const decisionData = [
+    { name: 'Sí', value: preguntasSi.length },
+    { name: 'No', value: preguntasNo.length }
+  ];
+  
+  const preguntasCoinciden = keyQuestions.filter(
+    q => q.decision != null && q.decisionPosterior != null && q.decision == 1 && q.decisionPosterior == 1
+  );
+  
+  const preguntasTotalComparables = keyQuestions.filter(
+    q => q.decision != null && q.decisionPosterior != null && q.decision == 1
+  );
+  
+  const implementData = [
+    { name: 'Respuesta sí', value: preguntasCoinciden.length },
+    { name: 'Respuesta no ', value: preguntasTotalComparables.length - preguntasCoinciden.length }
+  ];
+
+
+  const preguntasCoincidenSiNo = keyQuestions.filter(
+    q => q.decision != null && q.decisionPosterior != null && q.decision == 0 && q.decisionPosterior == 0
+  );
+  
+  const preguntasTotalComparablesNo = keyQuestions.filter(
+    q => q.decision != null && q.decisionPosterior != null && q.decision == 0
+  );
+  
+  const implementDataNo = [
+    { name: 'Respuesta no', value: preguntasCoincidenSiNo.length },
+    { name: 'Respuesta sí', value: preguntasTotalComparablesNo.length - preguntasCoincidenSiNo.length }
+  ];
+
+  const porcentajeNumerico = parseFloat(similitudDecision);
+  const colorTexto = porcentajeNumerico >= 80 ? '#28a745' : '#dc3545'; 
+  
+  const COLORS = ['#007bff', '#dc3545'];
+
+  const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
+    const RADIAN = Math.PI / 180;
+    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+    return (
+      <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize={14}>
+        {(percent * 100).toFixed(0)}%
+      </text>
+      );
+  };
 
   return (
     <div className="d-flex flex-column min-vh-100">
@@ -150,7 +326,7 @@ const Dashboard = () => {
                             {(user.tipoId === '84F03A04-2891-4DE7-8A3D-DBD2018EAE47') && (
                             <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/preguntaClave/pregunta/lista")}>Preguntas Clave</Nav.Link>)}
                             {(user.tipoId === '7D532F89-A63E-4667-B7CB-A4B477A55017' || user.tipoId === 'D3B78325-006E-4230-AE7E-C188181AE8B8') && (
-                            <Nav.Link as="div" className="nav-link-pointer active" onClick={() => navigate("/temas")}>Temas</Nav.Link>)}
+                            <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/temas")}>Temas</Nav.Link>)}
                             {(user.tipoId === '7D532F89-A63E-4667-B7CB-A4B477A55017') && (
                             <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/enrolamiento")}>Enrolamiento</Nav.Link>)}
                             {(user.tipoId === '7D532F89-A63E-4667-B7CB-A4B477A55017' || user.tipoId === 'D3B78325-006E-4230-AE7E-C188181AE8B8') && (
@@ -165,44 +341,169 @@ const Dashboard = () => {
                 </Container>
             </Navbar>
 
-      {/* Main Content */}
-      <Container fluid className="flex-grow-1 py-4">
-        <Row className="g-4">
-          {/* Calendar Section */}
-          <Col lg={4} className="order-lg-1">
-            <div className="border rounded p-3 shadow-sm h-100">
-              <div className="d-flex justify-content-between align-items-center mb-3">
-                <Button variant="outline-secondary" onClick={handlePrevMonth}>
-                  <i className="bi bi-chevron-left"></i>
-                </Button>
-                <h4 className="mb-0 text-center">
-                  {currentDate.toLocaleString('default', { month: 'long' })} {currentDate.getFullYear()}
-                </h4>
-                <Button variant="outline-secondary" onClick={handleNextMonth}>
-                  <i className="bi bi-chevron-right"></i>
-                </Button>
-              </div>
-              
-              <div className="d-flex justify-content-between mb-2">
-                {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map(day => (
-                  <div key={day} className="text-center fw-bold" style={{ width: '14%' }}>{day}</div>
-                ))}
-              </div>
-              
-              <div className="calendar-grid">
-                {renderCalendar()}
-              </div>
-            </div>
-          </Col>
-          
-          {/* Main Content Area */}
-          <Col lg={8} className="order-lg-2">
-            <div className="border rounded p-3 shadow-sm h-100">
-              <Outlet />
-            </div>
-          </Col>
-        </Row>
-      </Container>
+            {/* Area de graficas */}
+            <Container fluid className="flex-grow-1 py-4">
+              <Row className="g-4">
+                {/* Calendario  + Efectividad debajo */}
+                <Col lg={4} className="order-lg-1 d-flex flex-column">
+                  
+
+                  {/* Efectividad + tiempo promedio */}
+
+                  <div className="card bg-white border border-secondary-subtle shadow-sm mt-3 text-center p-3">
+                    <h5 className="card-title mb-2 text-dark">Temas activos</h5>
+                    <h1 className="fw-bold" style={{ color: '#003366' }}>{activeThemesCount}</h1>
+                  </div>
+
+                  <div className="card bg-white border border-secondary-subtle shadow-sm mt-3 text-center p-3">
+                    <h5 className="card-title mb-2 text-dark">Preguntas Clave Pendientes</h5>
+                    <h1 className="fw-bold" style={{ color: '#003366' }}>{pendientesCount}</h1>
+                  </div>
+
+                  <div className="card bg-white border border-secondary-subtle shadow-sm mt-3 text-center p-3">
+                    <h5 className="card-title mb-2 text-dark">Preguntas Clave Finalizadas</h5>
+                    <h1 className="fw-bold" style={{ color: '#003366' }}>{finalizadasCount}</h1>
+                  </div>
+
+                  <div className="card bg-white border border-secondary-subtle shadow-sm mt-3 text-center p-3">
+                    <h5 className="card-title mb-2 text-dark">Preguntas con retroalimentación</h5>
+                    <h1 className="fw-bold" style={{ color: '#003366' }}>{PosteriorCount}</h1>
+                  </div>
+
+                  <div className="card bg-white border border-secondary-subtle shadow-sm mt-3 text-center p-3">
+                    <h5 className="card-title mb-2 text-dark">Concordancia Decisión/Resultado</h5>
+                    <h1 className="fw-bold" style={{ color: colorTexto }}>{similitudDecision}%</h1>
+                  </div>
+
+                  <div className="card bg-white border border-secondary-subtle shadow-sm mt-3 text-center p-3">
+                    <h5 className="card-title mb-2 text-dark">Tiempo promedio de decisión</h5>
+                    <h1 className="fw-bold" style={{ color: '#003366' }}>{tiempoPromedio}</h1>
+                  </div>
+    
+                </Col>
+
+                {/* Area principal a la derecha */}
+                <Col lg={8} className="order-lg-2">
+                  <div className="border rounded p-3 shadow-sm h-100" style={{ backgroundColor: '#f8f9fa' }}>
+                
+
+                    <Outlet />
+
+                    {/* Gráficas de pie */}
+                    <Row className="mt-4">
+                      <Col>
+                        <div className="card bg-white border border-secondary-subtle shadow-sm">
+                          <div className="card-body">
+                            <h5 className="card-title text-dark text-center mb-3">Decisión final de preguntas clave</h5>
+                            <ResponsiveContainer width="100%" height={300}>
+                              <PieChart>
+                                <Pie
+                                  data={decisionData}
+                                  cx="50%"
+                                  cy="50%"
+                                  labelLine={false}
+                                  label={renderCustomizedLabel}
+                                  outerRadius={100}
+                                  fill="#8884d8"
+                                  dataKey="value"
+                                >
+                                  {decisionData.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                  ))}
+                                </Pie>
+                                <Tooltip />
+                                <Legend layout="horizontal" verticalAlign="bottom" align="center" />
+                              </PieChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
+                      </Col>
+
+                      <Col>
+                        <div className="card bg-white border border-secondary-subtle shadow-sm">
+                          <div className="card-body">
+                            <h5 className="card-title text-dark text-center mb-3">Decisión final Si vs Respuesta posterior</h5>
+                            <ResponsiveContainer width="100%" height={300}>
+                              <PieChart>
+                                <Pie
+                                  data={implementData}
+                                  cx="50%"
+                                  cy="50%"
+                                  labelLine={false}
+                                  label={renderCustomizedLabel}
+                                  outerRadius={100}
+                                  fill="#8884d8"
+                                  dataKey="value"
+                                >
+                                  {implementData.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                  ))}
+                                </Pie>
+                                <Tooltip />
+                                <Legend layout="horizontal" verticalAlign="bottom" align="center" />
+                              </PieChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
+                      </Col>
+
+                      <Col>
+                        <div className="card bg-white border border-secondary-subtle shadow-sm">
+                          <div className="card-body">
+                            <h5 className="card-title text-dark text-center mb-3">Decisión final No vs Respuesta posterior</h5>
+                            <ResponsiveContainer width="100%" height={300}>
+                              <PieChart>
+                                <Pie
+                                  data={implementDataNo}
+                                  cx="50%"
+                                  cy="50%"
+                                  labelLine={false}
+                                  label={renderCustomizedLabel}
+                                  outerRadius={100}
+                                  fill="#8884d8"
+                                  dataKey="value"
+                                >
+                                  {decisionData.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                  ))}
+                                </Pie>
+                                <Tooltip />
+                                <Legend layout="horizontal" verticalAlign="bottom" align="center" />
+                              </PieChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
+                      </Col>                     
+                    </Row>
+
+                    {/* Gráfica de barras */}
+                    <Row className="mt-4">
+                      <div className="card bg-white border border-secondary-subtle shadow-sm p-3 mt-4">
+                        <h5 className="text-center text-dark">Uso de temas en preguntas claves</h5>
+                        <ResponsiveContainer width="100%" height={300}>
+                          <BarChart
+                            data={temaCountsData}
+                            margin={{ top: 20, right: 30, left: 0, bottom: 5 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="name" />
+                            <YAxis allowDecimals={false} />
+                            <Tooltip />
+                            <Legend />
+                            <Bar dataKey="total" name="Total" fill="#003366">
+                              <LabelList dataKey="total" position="top" fill="#000" fontSize={12} />
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </Row>
+                  </div>
+                </Col>
+              </Row>
+            </Container>
+
+
+
     </div>
   );
 };

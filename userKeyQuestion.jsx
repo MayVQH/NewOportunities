@@ -47,6 +47,8 @@ const UserKeyQuestion = () => {
     const [respuestas, setRespuestas] = useState([]);
     const [modalRespuestasCompletas, setModalRespuestasCompletas] = useState(false);
     const [exitoComentario, setExitoComentario] = useState('');
+    const [exitoEnlace, setExitoEnlace] = useState('');
+    const [exitoDoc, setExitoDoc] = useState('');
     const navigate = useNavigate();
 
     const fileInputRef = useRef(null);
@@ -330,8 +332,11 @@ const UserKeyQuestion = () => {
       
           if (res.ok) {
             const enlaceGuardado = await res.json();
-            setEnlaces(prev => [...prev, enlaceGuardado]); 
-            setEnlaceActual('');           
+            console.log('enlace enviado',enlaceGuardado) 
+            setEnlaceActual('');   
+            
+            setExitoEnlace('El enlace se envio correctamente'); 
+            setTimeout(() => setExitoEnlace(''), 4000);
           }
 
 
@@ -398,6 +403,15 @@ const UserKeyQuestion = () => {
               });
 
             console.log(response)
+
+            if (response.ok) {
+                const enlaceDoc = await response.json();
+                console.log('enlace enviado',enlaceDoc) 
+                setEnlaceActual('');   
+                
+                setExitoDoc('El documento se envio correctamente'); 
+                setTimeout(() => setExitoDoc(''), 4000);
+              }
           
         }
 
@@ -485,7 +499,7 @@ const UserKeyQuestion = () => {
                             {(user.tipoId === '84F03A04-2891-4DE7-8A3D-DBD2018EAE47') && (
                             <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/preguntaClave/pregunta/lista")}>Preguntas Clave</Nav.Link>)}
                             {(user.tipoId === '7D532F89-A63E-4667-B7CB-A4B477A55017' || user.tipoId === 'D3B78325-006E-4230-AE7E-C188181AE8B8') && (
-                            <Nav.Link as="div" className="nav-link-pointer active" onClick={() => navigate("/temas")}>Temas</Nav.Link>)}
+                            <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/temas")}>Temas</Nav.Link>)}
                             {(user.tipoId === '7D532F89-A63E-4667-B7CB-A4B477A55017') && (
                             <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/enrolamiento")}>Enrolamiento</Nav.Link>)}
                             {(user.tipoId === '7D532F89-A63E-4667-B7CB-A4B477A55017' || user.tipoId === 'D3B78325-006E-4230-AE7E-C188181AE8B8') && (
@@ -674,6 +688,12 @@ const UserKeyQuestion = () => {
                         {errorMsg}
                     </div>
                     )}
+
+                    {exitoDoc && ( 
+                        <div className="alert alert-success mt-2" role="alert">
+                            {exitoDoc}
+                        </div>
+                    )}
                     <input 
                     type="file"
                     ref={fileInputRef}
@@ -716,6 +736,13 @@ const UserKeyQuestion = () => {
                 >
                 <div>
                     <label className="fw-bold mb-2">Bitácora de enlaces</label>
+
+                    {exitoEnlace && ( 
+                        <div className="alert alert-success mt-2" role="alert">
+                            {exitoEnlace}
+                        </div>
+                    )}
+
                     <textarea
                     value={enlaceActual}
                     onChange={(e) => setEnlaceActual(e.target.value)}

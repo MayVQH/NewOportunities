@@ -115,7 +115,8 @@ const Listtheme = () => {
                         comentario: question.comentario,
                         creador_nombre : question.creador_p, 
                         comentarioFinal : question.comentarioFinal,
-                        estatus : question.estado
+                        estatus : question.estado,
+                        decisionPosterior : question.decisionImplementada
                       }));
                       
                       setKeyQuestions(formattedQuestions);
@@ -173,7 +174,7 @@ const Listtheme = () => {
                             {(user.tipoId === '84F03A04-2891-4DE7-8A3D-DBD2018EAE47') && (
                             <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/preguntaClave/pregunta/lista")}>Preguntas Clave</Nav.Link>)}
                             {(user.tipoId === '7D532F89-A63E-4667-B7CB-A4B477A55017' || user.tipoId === 'D3B78325-006E-4230-AE7E-C188181AE8B8') && (
-                            <Nav.Link as="div" className="nav-link-pointer active" onClick={() => navigate("/temas")}>Temas</Nav.Link>)}
+                            <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/temas")}>Temas</Nav.Link>)}
                             {(user.tipoId === '7D532F89-A63E-4667-B7CB-A4B477A55017') && (
                             <Nav.Link as="div" className="nav-link-pointer" onClick={() => navigate("/enrolamiento")}>Enrolamiento</Nav.Link>)}
                             {(user.tipoId === '7D532F89-A63E-4667-B7CB-A4B477A55017' || user.tipoId === 'D3B78325-006E-4230-AE7E-C188181AE8B8') && (
@@ -261,6 +262,23 @@ const Listtheme = () => {
 
                     <Column dataField="comentario" caption="Comentario" allowEditing={false}/>
                     <Column dataField="estatus" caption="Estatus Pregunta" allowEditing={false}/>
+                    <Column dataField="decisionPosterior" caption="Se aplico la respuesta" allowEditing={false}
+                    cellRender={({ value }) => {
+                        let backgroundColor = value == 1 ? '#4CAF50' : value == 0 ? '#F44336' : '';
+                        let displayText = value == 1 ? 'SI' : value == 0 ? 'NO' : '';
+
+                        return (
+                          <div style={{
+                            backgroundColor,
+                            color: 'white',
+                            padding: '5px',
+                            borderRadius: '4px',
+                            textAlign: 'center'
+                        }}>
+                            {displayText}
+                        </div>
+                        );
+                      }}/>
                     <Column dataField="comentarioFinal" caption="Comentario Final" allowEditing={false}/>
                 </DataGrid>
 
