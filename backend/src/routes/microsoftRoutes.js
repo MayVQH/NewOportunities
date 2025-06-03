@@ -1,5 +1,8 @@
 import {Router} from "express";
 import passport from "passport"
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const loginRouter = Router()
 
@@ -27,9 +30,7 @@ loginRouter.get("/microsoft/callback",passport.authenticate("auth-microsoft", {
 
         console.log(userData)
 
-
-
-        const frontendOrigin = "http://localhost:5000";
+        const frontendOrigin = process.env.FRONTEND_ORIGIN;
 
         res.send(`<!DOCTYPE html>
             <html>
@@ -37,7 +38,7 @@ loginRouter.get("/microsoft/callback",passport.authenticate("auth-microsoft", {
                 <script>
                     window.opener.postMessage(
                         ${JSON.stringify({ user: userData })},
-                        "${process.env.FRONTEND_ORIGIN || 'http://localhost:5000'}"
+                        "${process.env.FRONTEND_ORIGIN }"
                     );
                     window.close();
                 </script>
@@ -54,7 +55,7 @@ loginRouter.get('/logout', (res,req) => {
     req.logout(() => {
         res.redirect('https://login.microsoftonline.com/common/oauth2/v2.0/logout?' + 
             new URLSearchParams({
-              post_logout_redirect_uri: process.env.FRONTEND_ORIGIN || 'http://localhost:5000',
+              post_logout_redirect_uri: process.env.FRONTEND_ORIGIN,
               client_id: process.env.MICROSOFT_CLIENT_ID
             })
         );
