@@ -7,6 +7,9 @@ import themeRouter from './routes/themeRoutes.js'
 import cors from 'cors';  
 import { getConnection,sql } from "./config/database.js";
 import session from 'express-session'
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const app = express()
 let pool;
@@ -31,7 +34,7 @@ async function testConnection() {
   }
 
 app.use(cors({
-    origin: 'http://localhost:5000',
+    origin: process.env.FRONTEND_ORIGIN,
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true
 }));
@@ -68,4 +71,3 @@ app.listen(PORT, () => console.log(`Servidor corriendo en http://localhost:${POR
 
 initialize();
 testConnection();
-
