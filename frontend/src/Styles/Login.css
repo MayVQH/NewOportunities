@@ -1,0 +1,123 @@
+.vanquish-login-container {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f8f9fa;
+  overflow: hidden;
+}
+
+.login-content {
+  text-align: center;
+  max-width: 400px;
+  padding: 2rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  z-index: 1;
+}
+
+.company-title {
+  color: #2c3e50;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.welcome-text {
+  color: #7f8c8d;
+  margin-bottom: 2rem;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  margin: 1.5rem 0;
+  color: #95a5a6;
+}
+
+.divider::before, .divider::after {
+  content: "";
+  flex: 1;
+  border-bottom: 1px solid #ecf0f1;
+}
+
+.divider::before {
+  margin-right: 1rem;
+}
+
+.divider::after {
+  margin-left: 1rem;
+}
+
+.microsoft-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  font-weight: 500;
+}
+
+.microsoft-icon {
+  width: 20px;
+  height: 20px;
+  margin-right: 10px;
+}
+
+.terms-text {
+  color: #95a5a6;
+  font-size: 0.9rem;
+  margin-top: 2rem;
+}
+
+.terms-text a {
+  color: #3498db;
+  text-decoration: none;
+}
+
+/* Corner designs */
+.corner-design {
+  position: fixed;
+  width: 200%;
+  height: 150px;
+  background: linear-gradient(
+      30deg, 
+      transparent 45%, 
+      #3498db 45%, 
+      #3498db 55%, 
+      transparent 55%
+  );
+  z-index: 0;
+}
+
+.corner-design.top-right {
+  top: 0;
+  right: 0;
+  transform: translateX(50%) translateY(-50%) rotate(30deg);
+  opacity: 0.8;
+}
+
+.corner-design.bottom-left {
+  bottom: 0;
+  left: 0;
+  transform: translateX(-50%) translateY(50%) rotate(30deg);
+  background: linear-gradient(
+      30deg, 
+      transparent 45%, 
+      #2980b9 45%, 
+      #2980b9 55%, 
+      transparent 55%
+  );
+  opacity: 0.8;
+}
+
+@media (max-width: 576px) {
+  .login-content {
+      margin: 0 1rem;
+      padding: 1.5rem;
+  }
+  
+  .corner-design {
+      height: 100px;
+  }
+}
