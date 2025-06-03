@@ -53,7 +53,7 @@ passport.use("auth-microsoft", new MicrosoftStrategy({
         console.log('Paso 2')
         profile.databaseUser = user
 
-        //console.log(profile)
+        console.log('perfil del usuario',profile)
         done(null,profile)
 
 
