@@ -1,6 +1,9 @@
 import { getConnection,sql } from "../config/database.js";
 import { BlobServiceClient } from "@azure/storage-blob";
 
+const AZURE_STORAGE_CONNECTION_STRING = `DefaultEndpointsProtocol=https;AccountName=documentosnexxus;AccountKey=${process.env.AZURE_ACCOUNT_KEY}==;EndpointSuffix=core.windows.net`;
+const containerName = 'oportunidades/imagenes';
+
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 
