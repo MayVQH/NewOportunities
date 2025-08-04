@@ -397,7 +397,7 @@ const UserKeyQuestion = () => {
             console.log('archivo',file)
             formdata.append('metadata', JSON.stringify(nuevoDoc));
             console.log('datos enviados al back',formdata)
-            const response = await fetch(`${import.meta.env.BACKEND_ORIGIN}/api/themes/documentos/guardar`, {
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_ORIGIN}/api/themes/documentos/guardar`, {
                 method: 'POST',
                 body: formdata
               });
@@ -440,7 +440,7 @@ const UserKeyQuestion = () => {
               
                 console.log('enlace enviado',nuevoEnlace)
                 try {
-                    const res = await fetch(`${import.meta.env.BACKEND_ORIGIN}/api/themes/preguntaClave/guardar/nuevo`, {
+                    const res = await fetch(`${import.meta.env.VITE_BACKEND_ORIGIN}/api/themes/preguntaClave/guardar/nuevo`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(nuevoEnlace)
