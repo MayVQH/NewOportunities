@@ -2,6 +2,7 @@ import React from "react";
 import { Button, Container, Row, Col } from "react-bootstrap";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import logo from '../assest/Logotipo_GV 2025_color con fondo.jpg';
+import '../Styles/Login.css';
 
 const Login = () => {
     const width = 620;
