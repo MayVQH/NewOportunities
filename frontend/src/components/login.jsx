@@ -41,11 +41,12 @@ const Login = () => {
         });
     };
 
-    return (
-        <Container fluid className="d-flex min-vh-100 justify-content-center align-items-center bg-light">
+   return (
+        <Container fluid className="login-background d-flex justify-content-center align-items-center">
+
             <Row className="justify-content-center w-100">
                 <Col xs={12} md={8} lg={6} xl={4}>
-                    <div className="bg-white p-4 rounded shadow-sm text-center">
+                    <div className="bg-white p-4 rounded shadow-sm text-center" style={{ backgroundColor: 'rgba(255, 255, 255, 0.9)' }}>
                         {/* Logo */}
                         <img 
                             src={logo} 
@@ -92,5 +93,6 @@ const Login = () => {
         </Container>
     );
 };
+
 
 export default Login;
